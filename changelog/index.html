@@ -1,0 +1,789 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="../assets/obsidian.png">
+      <meta name="generator" content="mkdocs-1.2.3, mkdocs-material-8.1.6">
+    
+    
+      
+        <title>Changelog - Dataview</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.cd566b2a.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.e6a45f82.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#7e56c2">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="" data-md-color-primary="deep-purple" data-md-color-accent="">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#0422" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Dataview" class="md-header__button md-logo" aria-label="Dataview" data-md-component="logo">
+      
+  <img src="../assets/obsidian.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Dataview
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/blacksmithgu/obsidian-dataview/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Dataview" class="md-nav__button md-logo" aria-label="Dataview" data-md-component="logo">
+      
+  <img src="../assets/obsidian.png" alt="logo">
+
+    </a>
+    Dataview
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/blacksmithgu/obsidian-dataview/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-annotation/" class="md-nav__link">
+        Data Annotation
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-queries/" class="md-nav__link">
+        Data Querying
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4" type="checkbox" id="__nav_4" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4">
+          Query Language
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Query Language" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          Query Language
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query/queries/" class="md-nav__link">
+        Queries
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query/expressions/" class="md-nav__link">
+        Expressions
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query/literals/" class="md-nav__link">
+        Literals
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query/sources/" class="md-nav__link">
+        Sources
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query/functions/" class="md-nav__link">
+        Functions
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../query/examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5">
+          JavaScript API
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="JavaScript API" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          JavaScript API
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/intro/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/data-array/" class="md-nav__link">
+        Data Arrays
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/code-reference/" class="md-nav__link">
+        Codeblock Reference
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/code-examples/" class="md-nav__link">
+        Codeblock Examples
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_6" type="checkbox" id="__nav_6" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_6">
+          Plugin Developers
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Plugin Developers" data-md-level="1">
+        <label class="md-nav__title" for="__nav_6">
+          <span class="md-nav__icon md-icon"></span>
+          Plugin Developers
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plugin/develop-against-dataview/" class="md-nav__link">
+        Developing Against Dataview
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Changelog
+      </a>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+<a href="https://github.com/blacksmithgu/obsidian-dataview/edit/master/docs/docs/changelog.md" title="Edit this page" class="md-content__button md-icon">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
+</a>
+
+
+<h1 id="0422">0.4.22</h1>
+<p>The @pjeby update! This includes several performance improvements suggested by @pjeby to dramatically improve background
+Dataview performance as well as reduce some memory pressure. It also includes some minor bug-fixes and preliminary
+functionality:</p>
+<ul>
+<li>Target ES2018 for better Promise support</li>
+<li>Allow parsing shorthands in <code>dv.date()</code>.</li>
+<li>Add additional metadata to inline field rendering which can be styled.</li>
+<li>Cleanup events &amp; workers on plugin uninstall, improving the Dataview uninstall/disable/reload experience.</li>
+<li>Add preliminary <code>CALENDAR</code> queries - rendering similar to the obsidian-calendar plugin, see the documentation!</li>
+</ul>
+<p>Dataview should perform much better on startup and when you have lots of tabs open - thanks again to @pjeby.</p>
+<hr />
+<h1 id="0421">0.4.21</h1>
+<p>Bugfix release which primarily fixes issues that Dataview had with the live preview mode in upcoming Obsidian versions;
+Dataview live preview should now be functional. Also includes a number of smaller bugfixes.</p>
+<ul>
+<li>Fix #646: Add <code>date(yesterday)</code> to create a date 24 hours ago.</li>
+<li>Fix #618: Luxon is now available on the dataview API (<code>dv.luxon</code>).</li>
+<li>Fix #510: Add <code>dv.duration()</code> for parsing durations.</li>
+<li>Fix #647: All HTML functions in the DataviewJS API now return their rendered objects.</li>
+<li>Fix #652: Fix parsing of invalid dates.</li>
+<li>Fix #629: Fix block link parsing.</li>
+<li>Fix #601: Timezones are now rendered properly and parsed properly in Dataview dates.</li>
+<li>PR #637: Add <code>meta(link)</code> which allows you to access various metadata about a link itself.</li>
+<li>Various minor null safety fixes.</li>
+<li>Dataview now reports it's exact version and build time in logs.</li>
+</ul>
+<hr />
+<h1 id="0420">0.4.20</h1>
+<p>Some feature work (mostly by other contributors) while I while away at section metadata. May also fix a few bugs!</p>
+<ul>
+<li>Fix #448: You can now use the "Task Completion Tracking" option to automatically add completion metadata to tasks
+  which are checked/unchecked through Dataview. Thanks to @sheeley.</li>
+<li>Add a search bar to documentation. Thanks to @tzhou.</li>
+<li>Add new date expressions for the start of the week (<code>date(sow)</code>), and the end of the week (<code>date(eow)</code>). Thanks
+  @Jeamee and @v_mujunma.</li>
+</ul>
+<p>Small minor bugfix / security releases may follow in the near future; otherwise, the next major release will include
+section and object metadata.</p>
+<hr />
+<h1 id="0419">0.4.19</h1>
+<p>Bugfix release which corrects emoji parsing &amp; localization issues.</p>
+<ul>
+<li>Add <code>DataArray#into</code>, which lets you index into objects without flattening.</li>
+<li>Renamed 'header' to 'section' in task metadata; 'header' will remain around for a few major releases to let people
+  naturally migrate.</li>
+<li>Fix #487: You no longer need spaces around '*' in expressions.</li>
+<li>Fix #559: Fix unicode issues in variable canonicalization which was causing problems with non-Latin inline field
+  keys.</li>
+</ul>
+<h2 id="duration-parsing">Duration Parsing</h2>
+<p>You can now include multiple units in durations: <code>dur(8 minutes, 4 seconds)</code> or <code>dur(2yr8mo12d)</code>. You can separate
+durations by commas, or use the abbreviated syntax with/without spaces.</p>
+<hr />
+<h1 id="0418">0.4.18</h1>
+<p>Bugfix release which fixes bad inline field highlighting if '[' and '(' are mixed on the same line in particular orders.</p>
+<hr />
+<h1 id="0417">0.4.17</h1>
+<p>Minor feature release to patch up more implementation holes.</p>
+<h2 id="single-file-queries">Single File Queries</h2>
+<p>You can now query from a specific file (instead of just folders and tags) by specifying the full file path:</p>
+<div class="highlight"><pre><span></span><code>TASK FROM &quot;dataview/Test&quot;
+...
+</code></pre></div>
+<p>This is primarily useful for task queries, but will soon be useful for section and object queries in the near future as
+well.</p>
+<h2 id="better-inline-field-highlighting">Better Inline Field Highlighting</h2>
+<p>The CSS for inline field highlighting has been fixed and some compatibility issues improved, so it should work on all
+themes now instead of only a few.</p>
+<h2 id="dvel">dv.el()</h2>
+<p>DataviewJS now has <code>dv.el()</code>, which is like existing functions like <code>dv.paragraph</code> and <code>dv.span</code> but can create any
+HTML element type; for example:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">dv</span><span class="p">.</span><span class="nx">el</span><span class="p">(</span><span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;Text!&quot;</span><span class="p">);</span>
+<span class="nx">dv</span><span class="p">.</span><span class="nx">el</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="mf">18</span><span class="p">);</span>
+</code></pre></div>
+<hr />
+<h1 id="0416">0.4.16</h1>
+<p>Small performance release which substantially reduces the impact Dataview has on vault loading times (by spreading out
+file loading). The Dataview Index is now also eagerly initialized, so plugin consumers of the API can immediately start
+using it instead of waiting for the <code>dataview:api-ready</code> event.</p>
+<hr />
+<h1 id="0415">0.4.15</h1>
+<p>A simple fix for #537 which properly 'awaits' value rendering in <code>dv.view()</code>. Fixes issues with values rendering out of
+order.</p>
+<hr />
+<h1 id="0414">0.4.14</h1>
+<p>Small bugfix release.</p>
+<ul>
+<li>Fixes inline field evaluation when using the new fancy highlighting.</li>
+<li>You can now configure whether task links should show up at the beginning or end of the task (or just disable them)
+  in the "Task Link Location" setting.</li>
+<li>Most setting updates will immediately be applied to existing Dataviews.</li>
+</ul>
+<hr />
+<h1 id="0413">0.4.13</h1>
+<p>Bugfix release which adds fancy rendering to inline-inline fields and includes a few bugfixes.</p>
+<h2 id="pretty-inline-fields">Pretty Inline Fields</h2>
+<p>Inline fields of the form <code>[key:: value]</code> will now be rendered with fancy new HTML! By default, they are rendered with
+both the key and value. You can only render the value using parenthesis instead: <code>(key:: value)</code>. You can disable
+this feature in the configuration.</p>
+<p>Full-line inline fields (that Dataview has supported for a long time) will gain similar rendering support soon; in the
+meanwhile, give the new syntax a try!</p>
+<h3 id="task-linking">Task Linking</h3>
+<p>Tasks now render with a link to the page/section that they are defined in, making <code>GROUP BY</code> and custom task
+editing easier to do:</p>
+<ul class="task-list">
+<li class="task-list-item"><input type="checkbox" disabled/> A Task. 🔗</li>
+<li class="task-list-item"><input type="checkbox" disabled/> Another Task. 🔗<ul class="task-list">
+<li class="task-list-item"><input type="checkbox" disabled/> Some Random Subtask. 🔗</li>
+</ul>
+</li>
+</ul>
+<p>You can configure the symbol for the link or disable it alltogether.</p>
+<h3 id="improving-dataviewjs-posture">Improving DataviewJS Posture</h3>
+<p>I am currently actively looking into improving DataviewJS sandboxing and general security posture. As a first small step
+in this, I have made DataviewJS opt-in instead of opt-out, and added a separate control for Inline DataviewJS. You may
+need to re-enable it in your settings if you use it.</p>
+<p>More improvements and better JavaScript sandboxing will follow.</p>
+<hr />
+<h1 id="0412-hotfix1">0.4.12-hotfix1</h1>
+<p>Re-release of 0.4.12 that fixes an important indexing issue.</p>
+<ul>
+<li>Fix #505: Use <code>completion</code> instead of <code>completed</code> when setting task completion time.</li>
+<li>Fix #509: Add <code>startswith</code> / <code>endswith</code> string functions.</li>
+<li>Fix #488: Add <code>padleft</code> and <code>padright</code>, and <code>string</code>.</li>
+<li>Fix #506, #512: Fix date comparisons due to a bizarre date zone issue.</li>
+</ul>
+<hr />
+<h1 id="0412">0.4.12</h1>
+<p>Bugfix release following up 0.4.11 which includes a few minor function additions.</p>
+<ul>
+<li>Fix #512: Strange zone issue causing dates to not be equal.</li>
+<li>Fix #506: Same as #512.</li>
+<li>Fix #488: Add <code>padleft</code> / <code>padright</code> functions.</li>
+<li>Fix #509: Add <code>startswith</code> and <code>endswith</code> functions.</li>
+<li>Fix #505: Correctly read completion dates for tasks from <code>completion</code>.</li>
+</ul>
+<p>This release also includes improved testing thanks to mocking Obsidian plugin APIs!</p>
+<hr />
+<h1 id="0411">0.4.11</h1>
+<p>Fixes task behavior and adds "truly inline" fields!</p>
+<h2 id="improved-task-behavior">Improved Task Behavior</h2>
+<p>Task queries are now much improved from their primitive foundations - you can now filter, sort, and group them! The FROM
+block is still page-based, sadly, though you can simply use <code>WHERE</code> instead if desired. For example, you can now access
+task fields like <code>text</code>, <code>line</code>, or <code>completed</code>:</p>
+<div class="highlight"><pre><span></span><code>TASK WHERE contains(text, &quot;#tag&quot;)
+WHERE !completed
+GROUP BY file.folder
+</code></pre></div>
+<p>The full list of all available task metadata can be found
+<a href="https://blacksmithgu.github.io/obsidian-dataview/data-annotation/#tasks">here</a>; tasks include all the information
+needed to uniquely identify them, and automatically inherit all of the metadata from their parent file as well (so you
+can access <code>file.name</code>, for example). You can also annotate tasks with inline fields, as described in the section below.</p>
+<p>There is some additional UX work to be done - primarily on more easily allowing you to navigate to where the task is
+defined, as well as render tasks in views other than the <code>TASK</code> view.  The semantics of how grouping works (to make it
+more intuitive/useful than it currently is) will likely also be revisited.</p>
+<h2 id="inline-inline-fields">Inline Inline Fields</h2>
+<p>Early support for truly inline fields have been added, where you can add metadata in the middle of a sentence. It looks
+similar to existing inline field syntax, but with brackets or parenthesis:</p>
+<div class="highlight"><pre><span></span><code>I would rate this a [rating:: 6]. It was (thoughts:: acceptable).
+</code></pre></div>
+<p>Improved rendering for all inline fields is coming in an unpcoming update to improve the visual look of these inline
+fields.</p>
+<h2 id="issues">Issues</h2>
+<ul>
+<li>Fix #496: Fix task <code>SORT</code> functionality to do something.</li>
+<li>Fix #492: Tasks now properly annotated with parent file information.</li>
+<li>Fix #498: Fix task checking/unchecking logic (which broke due to a change in the task regex...).</li>
+</ul>
+<hr />
+<h1 id="initial">Initial</h1>
+<p>Start of the automatic changelog.</p>
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        
+        <a href="../plugin/develop-against-dataview/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Developing Against Dataview" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Developing Against Dataview
+            </div>
+          </div>
+        </a>
+      
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "..", "features": [], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "../assets/javascripts/workers/search.22074ed6.min.js"}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.1514a9a0.min.js"></script>
+      
+    
+  </body>
+</html>
