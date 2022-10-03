@@ -1,7 +1,7 @@
 /** Default function implementations for the expression evaluator. */
 
 import { DateTime } from "luxon";
-import { Link, LiteralType, LiteralValue, Values } from "data/value";
+import { LiteralType, Link, Literal, Values, Widgets } from "data-model/value";
 import { currentLocale } from "util/locale";
 import { LiteralReprAll, LiteralTypeOrAll } from "./binaryop";
 import type { Context } from "./context";
@@ -13,9 +13,9 @@ import { escapeRegex } from "util/normalize";
  * A function implementation which takes in a function context and a variable number of arguments. Throws an error if an
  * invalid number/type of arguments are passed.
  */
-export type FunctionImpl = (context: Context, ...rest: LiteralValue[]) => LiteralValue;
+export type FunctionImpl = (context: Context, ...rest: Literal[]) => Literal;
 /** A "bound" function implementation which has already had a function context passed to it. */
-export type BoundFunctionImpl = (...args: LiteralValue[]) => LiteralValue;
+export type BoundFunctionImpl = (...args: Literal[]) => Literal;
 
 /** A function variant used in the function builder which holds the argument types. */
 interface FunctionVariant {
@@ -47,7 +47,7 @@ export class FunctionBuilder {
     /** Add a function variant which takes in a single argument. */
     public add1<T extends LiteralTypeOrAll>(
         argType: T,
-        impl: (a: LiteralReprAll<T>, context: Context) => LiteralValue
+        impl: (a: LiteralReprAll<T>, context: Context) => Literal
     ): FunctionBuilder {
         this.variants.push({
             args: [argType],
@@ -61,7 +61,7 @@ export class FunctionBuilder {
     public add2<T extends LiteralTypeOrAll, U extends LiteralTypeOrAll>(
         arg1: T,
         arg2: U,
-        impl: (a: LiteralReprAll<T>, b: LiteralReprAll<U>, context: Context) => LiteralValue
+        impl: (a: LiteralReprAll<T>, b: LiteralReprAll<U>, context: Context) => Literal
     ): FunctionBuilder {
         this.variants.push({
             args: [arg1, arg2],
@@ -76,7 +76,7 @@ export class FunctionBuilder {
         arg1: T,
         arg2: U,
         arg3: V,
-        impl: (a: LiteralReprAll<T>, b: LiteralReprAll<U>, c: LiteralReprAll<V>, context: Context) => LiteralValue
+        impl: (a: LiteralReprAll<T>, b: LiteralReprAll<U>, c: LiteralReprAll<V>, context: Context) => Literal
     ): FunctionBuilder {
         this.variants.push({
             args: [arg1, arg2, arg3],
@@ -95,7 +95,7 @@ export class FunctionBuilder {
 
     /** Return a function which checks the number and type of arguments, passing them on to the first matching variant. */
     public build(): FunctionImpl {
-        let self: FunctionImpl = (context: Context, ...args: LiteralValue[]) => {
+        let self: FunctionImpl = (context: Context, ...args: Literal[]) => {
             let types: LiteralType[] = [];
             for (let arg of args) {
                 let argType = Values.typeOf(arg);
@@ -155,7 +155,7 @@ export class FunctionBuilder {
 export namespace Functions {
     /** Bind a context to a function implementation, yielding a function which does not need the context argument. */
     export function bind(func: FunctionImpl, context: Context): BoundFunctionImpl {
-        return (...args: LiteralValue[]) => func(context, ...args);
+        return (...args: Literal[]) => func(context, ...args);
     }
 
     /** Bind a context to all functions in the given map, yielding a new map of bound functions. */
@@ -174,6 +174,21 @@ export namespace Functions {
  * and test code.
  */
 export namespace DefaultFunctions {
+    export const typeOf = new FunctionBuilder("type")
+        .add1("array", _ => "array")
+        .add1("boolean", _ => "boolean")
+        .add1("date", _ => "date")
+        .add1("duration", _ => "duration")
+        .add1("function", _ => "function")
+        .add1("widget", _ => "widget")
+        .add1("link", _ => "link")
+        .add1("null", _ => "null")
+        .add1("number", _ => "number")
+        .add1("object", _ => "object")
+        .add1("string", _ => "string")
+        .add1("*", _ => "unknown")
+        .build();
+
     /** Compute the length of a data type. */
     export const length = new FunctionBuilder("length")
         .add1("array", a => a.length)
@@ -188,7 +203,7 @@ export namespace DefaultFunctions {
     /** Object constructor function. */
     export const object: FunctionImpl = (_context, ...args) => {
         if (args.length % 2 != 0) throw Error("object() requires an even number of arguments");
-        let result: Record<string, LiteralValue> = {};
+        let result: Record<string, Literal> = {};
         for (let index = 0; index < args.length; index += 2) {
             let key = args[index];
             if (!Values.isString(key)) throw Error("keys should be of type string for object(key1, value1, ...)");
@@ -205,23 +220,27 @@ export namespace DefaultFunctions {
         .add1("null", _a => null)
         .vectorize(1, [0])
         .add2("string", "string", (t, d, c) => Link.file(c.linkHandler.normalize(t), false, d))
+        .add3("string", "string", "boolean", (t, d, e, c) => Link.file(c.linkHandler.normalize(t), e, d))
         .add2("link", "string", (t, d) => t.withDisplay(d))
         .add2("null", "*", () => null)
         .add2("*", "null", (t, _n, c) => link(c, t))
         .vectorize(2, [0, 1])
         .build();
 
+    /** Embed and un-embed a link. */
+    export const embed: FunctionImpl = new FunctionBuilder("embed")
+        .add1("link", l => l.toEmbed())
+        .vectorize(1, [0])
+        .add2("link", "boolean", (l, e, c) => (e ? l.toEmbed() : l.fromEmbed()))
+        .add1("null", () => null)
+        .add2("null", "*", () => null)
+        .add2("*", "null", () => null)
+        .vectorize(2, [0, 1])
+        .build();
+
     /** External link constructor function. */
     export const elink: FunctionImpl = new FunctionBuilder("elink")
-        .add2("string", "string", (a, d) => {
-            let elem = document.createElement("a");
-            elem.textContent = d;
-            elem.rel = "noopener";
-            elem.target = "_blank";
-            elem.classList.add("external-link");
-            elem.href = a;
-            return elem;
-        })
+        .add2("string", "string", (a, d) => Widgets.externalLink(a, d))
         .add2("string", "null", (s, _n, c) => elink(c, s, s))
         .add2("null", "*", () => null)
         .vectorize(2, [0])
@@ -427,14 +446,14 @@ export namespace DefaultFunctions {
         .build();
 
     /** Extract 0 or more keys from a given object via indexing. */
-    export const extract: FunctionImpl = (context: Context, ...args: LiteralValue[]) => {
+    export const extract: FunctionImpl = (context: Context, ...args: Literal[]) => {
         if (args.length == 0) return "extract(object, key1, ...) requires at least 1 argument";
 
         // Manually handle vectorization in the first argument.
         let object = args[0];
         if (Values.isArray(object)) return object.map(v => extract(context, v, ...args.slice(1)));
 
-        let result: Record<string, LiteralValue> = {};
+        let result: Record<string, Literal> = {};
         for (let index = 1; index < args.length; index++) {
             let key = args[index];
             if (!Values.isString(key)) throw Error("extract(object, key1, ...) must be called with string keys");
@@ -445,7 +464,7 @@ export namespace DefaultFunctions {
         return result;
     };
 
-    // Reverse aan array or string.
+    // Reverse an array or string.
     export const reverse = new FunctionBuilder("reverse")
         .add1("array", l => {
             let result = [];
@@ -462,9 +481,9 @@ export namespace DefaultFunctions {
 
     // Sort an array; if given two arguments, sorts by the key returned.
     export const sort: FunctionImpl = new FunctionBuilder("sort")
-        .add1("array", (list, context) => sort(context, list, (_ctx: Context, a: LiteralValue) => a))
+        .add1("array", (list, context) => sort(context, list, (_ctx: Context, a: Literal) => a))
         .add2("array", "function", (list, key, context) => {
-            let result = ([] as LiteralValue[]).concat(list);
+            let result = ([] as Literal[]).concat(list);
             result.sort((a, b) => {
                 let akey = key(context, a);
                 let bkey = key(context, b);
@@ -574,6 +593,36 @@ export namespace DefaultFunctions {
     export const padright: FunctionImpl = new FunctionBuilder("padright")
         .add2("string", "number", (str, len) => str.padEnd(len, " "))
         .add3("string", "number", "string", (str, len, padding) => str.padEnd(len, padding))
+        .add2("null", "*", () => null)
+        .add2("*", "null", () => null)
+        .add3("null", "*", "*", () => null)
+        .add3("*", "null", "*", () => null)
+        .add3("*", "*", "null", () => null)
+        .vectorize(2, [0, 1])
+        .vectorize(3, [0, 1, 2])
+        .build();
+
+    export const substring: FunctionImpl = new FunctionBuilder("substring")
+        .add2("string", "number", (str, start) => str.substring(start))
+        .add3("string", "number", "number", (str, start, end) => str.substring(start, end))
+        .add2("null", "*", () => null)
+        .add2("*", "null", () => null)
+        .add3("null", "*", "*", () => null)
+        .add3("*", "null", "*", () => null)
+        .add3("*", "*", "null", () => null)
+        .vectorize(2, [0, 1])
+        .vectorize(3, [0, 1, 2])
+        .build();
+
+    export const truncate: FunctionImpl = new FunctionBuilder("truncate")
+        .add3("string", "number", "string", (str, length, suffix) => {
+            if (str.length > length - suffix.length) {
+                return str.substring(0, Math.max(0, length - suffix.length)) + suffix;
+            } else {
+                return str;
+            }
+        })
+        .add2("string", "number", (str, length, ctx) => truncate(ctx, str, length, "..."))
         .add2("null", "*", () => null)
         .add2("*", "null", () => null)
         .add3("null", "*", "*", () => null)
@@ -700,6 +749,7 @@ export const DEFAULT_FUNCTIONS: Record<string, FunctionImpl> = {
     list: DefaultFunctions.list,
     array: DefaultFunctions.list,
     link: DefaultFunctions.link,
+    embed: DefaultFunctions.embed,
     elink: DefaultFunctions.elink,
     date: DefaultFunctions.date,
     dur: DefaultFunctions.dur,
@@ -708,6 +758,7 @@ export const DEFAULT_FUNCTIONS: Record<string, FunctionImpl> = {
     number: DefaultFunctions.number,
     string: DefaultFunctions.string,
     object: DefaultFunctions.object,
+    typeof: DefaultFunctions.typeOf,
 
     // Math Operations.
     round: DefaultFunctions.round,
@@ -727,6 +778,8 @@ export const DEFAULT_FUNCTIONS: Record<string, FunctionImpl> = {
     endswith: DefaultFunctions.endswith,
     padleft: DefaultFunctions.padleft,
     padright: DefaultFunctions.padright,
+    substring: DefaultFunctions.substring,
+    truncate: DefaultFunctions.truncate,
 
     // Date Operations.
     striptime: DefaultFunctions.striptime,

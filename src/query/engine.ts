@@ -1,15 +1,16 @@
 /**
  * Takes a full query and a set of indices, and (hopefully quickly) returns all relevant files.
  */
-import { FullIndex } from "data/index";
+import { FullIndex } from "data-index/index";
 import { Context, LinkHandler } from "expression/context";
-import { resolveSource, Datarow, matchingSourcePaths } from "data/resolver";
-import { DataObject, LiteralValue, Values, Task, Grouping, Link } from "data/value";
+import { resolveSource, Datarow, matchingSourcePaths } from "data-index/resolver";
+import { DataObject, Link, Literal, Values, Grouping, Widgets } from "data-model/value";
 import { CalendarQuery, ListQuery, Query, QueryOperation, TableQuery } from "query/query";
 import { Result } from "api/result";
-import { Field } from "expression/field";
+import { Field, Fields } from "expression/field";
 import { QuerySettings } from "settings";
 import { DateTime } from "luxon";
+import { SListItem } from "data-model/serialized/markdown";
 
 function iden<T>(x: T): T {
     return x;
@@ -44,10 +45,10 @@ export interface CoreExecution {
 export function executeCore(rows: Pagerow[], context: Context, ops: QueryOperation[]): Result<CoreExecution, string> {
     let diagnostics = [];
     let identMeaning: IdentifierMeaning = { type: "path" };
-    let startTime = new Date().getTime();
+    let startTime = Date.now();
 
     for (let op of ops) {
-        let opStartTime = new Date().getTime();
+        let opStartTime = Date.now();
         let incomingRows = rows.length;
         let errors: { index: number; message: string }[] = [];
 
@@ -65,10 +66,10 @@ export function executeCore(rows: Pagerow[], context: Context, ops: QueryOperati
                 break;
             case "sort":
                 let sortFields = op.fields;
-                let taggedData: { data: Pagerow; fields: LiteralValue[] }[] = [];
+                let taggedData: { data: Pagerow; fields: Literal[] }[] = [];
                 outer: for (let index = 0; index < rows.length; index++) {
                     let row = rows[index];
-                    let rowSorts: LiteralValue[] = [];
+                    let rowSorts: Literal[] = [];
                     for (let sIndex = 0; sIndex < sortFields.length; sIndex++) {
                         let value = context.evaluate(sortFields[sIndex].field, row.data);
                         if (!value.successful) {
@@ -116,7 +117,7 @@ export function executeCore(rows: Pagerow[], context: Context, ops: QueryOperati
                 rows = rows.slice(0, limiting.value);
                 break;
             case "group":
-                let groupData: { data: Pagerow; key: LiteralValue }[] = [];
+                let groupData: { data: Pagerow; key: Literal }[] = [];
                 for (let index = 0; index < rows.length; index++) {
                     let value = context.evaluate(op.field.field, rows[index].data);
                     if (!value.successful) {
@@ -139,7 +140,7 @@ export function executeCore(rows: Pagerow[], context: Context, ops: QueryOperati
                 });
 
                 // Then walk through and find fields that are equal.
-                let finalGroupData: { key: LiteralValue; rows: DataObject[]; [groupKey: string]: LiteralValue }[] = [];
+                let finalGroupData: { key: Literal; rows: DataObject[]; [groupKey: string]: Literal }[] = [];
                 if (groupData.length > 0)
                     finalGroupData.push({
                         key: groupData[0].key,
@@ -206,7 +207,7 @@ export function executeCore(rows: Pagerow[], context: Context, ops: QueryOperati
             incomingRows,
             errors,
             outgoingRows: rows.length,
-            timeMs: new Date().getTime() - opStartTime,
+            timeMs: Date.now() - opStartTime,
         });
     }
 
@@ -215,7 +216,7 @@ export function executeCore(rows: Pagerow[], context: Context, ops: QueryOperati
         idMeaning: identMeaning,
         ops,
         diagnostics,
-        timeMs: new Date().getTime() - startTime,
+        timeMs: Date.now() - startTime,
     });
 }
 
@@ -230,7 +231,7 @@ export function executeCoreExtract(
     if (!internal.successful) return internal;
 
     let core = internal.value;
-    let startTime = new Date().getTime();
+    let startTime = Date.now();
     let errors: ExecutionError[] = [];
     let res: Pagerow[] = [];
 
@@ -259,7 +260,7 @@ export function executeCoreExtract(
                 .join("\n")}`);
     }
 
-    let execTime = new Date().getTime() - startTime;
+    let execTime = Date.now() - startTime;
     return Result.success({
         data: res,
         idMeaning: core.idMeaning,
@@ -278,7 +279,7 @@ export function executeCoreExtract(
 
 export interface ListExecution {
     core: CoreExecution;
-    data: { primary: LiteralValue; value?: LiteralValue }[];
+    data: Literal[];
     primaryMeaning: IdentifierMeaning;
 }
 
@@ -295,19 +296,22 @@ export async function executeList(
 
     // Extract information about the origin page to add to the root context.
     let rootContext = new Context(defaultLinkHandler(index, origin), settings, {
-        this: index.pages.get(origin)?.toObject(index) ?? {},
+        this: index.pages.get(origin)?.serialize(index) ?? {},
     });
 
     let targetField = (query.header as ListQuery).format;
+    let showId = (query.header as ListQuery).showId;
     let fields: Record<string, Field> = targetField ? { target: targetField } : {};
 
     return executeCoreExtract(fileset.value, rootContext, query.operations, fields).map(core => {
-        let data = core.data.map(p =>
-            iden({
-                primary: p.id,
-                value: p.data["target"] ?? undefined,
-            })
-        );
+        let data: Literal[];
+        if (showId && targetField) {
+            data = core.data.map(p => Widgets.listPair(p.id, p.data["target"] ?? null));
+        } else if (targetField) {
+            data = core.data.map(p => p.data["target"] ?? null);
+        } else {
+            data = core.data.map(p => p.id);
+        }
 
         return { primaryMeaning: core.idMeaning, core, data };
     });
@@ -317,7 +321,7 @@ export async function executeList(
 export interface TableExecution {
     core: CoreExecution;
     names: string[];
-    data: { id: LiteralValue; values: LiteralValue[] }[];
+    data: Literal[][];
     idMeaning: IdentifierMeaning;
 }
 
@@ -334,48 +338,49 @@ export async function executeTable(
 
     // Extract information about the origin page to add to the root context.
     let rootContext = new Context(defaultLinkHandler(index, origin), settings, {
-        this: index.pages.get(origin)?.toObject(index) ?? {},
+        this: index.pages.get(origin)?.serialize(index) ?? {},
     });
 
     let targetFields = (query.header as TableQuery).fields;
+    let showId = (query.header as TableQuery).showId;
     let fields: Record<string, Field> = {};
     for (let field of targetFields) fields[field.name] = field.field;
 
     return executeCoreExtract(fileset.value, rootContext, query.operations, fields).map(core => {
-        let names = targetFields.map(f => f.name);
-        let data = core.data.map(p =>
-            iden({
-                id: p.id,
-                values: targetFields.map(f => p.data[f.name]),
-            })
-        );
+        if (showId) {
+            const idName = core.idMeaning.type === "group" ? core.idMeaning.name : settings.tableIdColumnName;
+            let names = [idName].concat(targetFields.map(f => f.name));
 
-        return { core, names, data, idMeaning: core.idMeaning };
+            let data = core.data.map(p => ([p.id] as Literal[]).concat(targetFields.map(f => p.data[f.name])));
+            return { core, names, data, idMeaning: core.idMeaning };
+        } else {
+            let names = targetFields.map(f => f.name);
+
+            let data = core.data.map(p => targetFields.map(f => p.data[f.name]));
+            return { core, names, data, idMeaning: core.idMeaning };
+        }
     });
 }
 
 /** The result of executing a task query. */
 export interface TaskExecution {
     core: CoreExecution;
-    tasks: Grouping<Task[]>;
+    tasks: Grouping<SListItem>;
 }
 
-/** Maps a raw core execution result to a task grouping which is much easier to  */
-function extractTaskGroupings(id: IdentifierMeaning, rows: DataObject[]): Grouping<Task[]> {
+/** Maps a raw core execution result to a task grouping which is much easier to render. */
+function extractTaskGroupings(id: IdentifierMeaning, rows: DataObject[]): Grouping<SListItem> {
     switch (id.type) {
         case "path":
-            return { type: "base", value: rows.map(r => Task.fromObject(r)) };
+            return rows as SListItem[];
         case "group":
             let key = id.name;
-            return {
-                type: "grouped",
-                groups: rows.map(r =>
-                    iden({
-                        key: r[key],
-                        value: extractTaskGroupings(id.on, r.rows as DataObject[]),
-                    })
-                ),
-            };
+            return rows.map(r =>
+                iden({
+                    key: r[key],
+                    rows: extractTaskGroupings(id.on, r.rows as DataObject[]),
+                })
+            );
     }
 }
 
@@ -395,19 +400,17 @@ export async function executeTask(
         let page = index.pages.get(path);
         if (!page) continue;
 
-        let pageData = page.toObject(index);
-        let rpage = page;
-
-        let pageTasks = page.tasks.map(t => {
-            let copy = t.toObject();
+        let pageData = page.serialize(index);
+        let pageTasks = pageData.file.tasks.map(t => {
+            const tcopy = Values.deepCopy(t);
 
             // Add page data to this copy.
             for (let [key, value] of Object.entries(pageData)) {
-                if (key in copy) continue;
-                copy[key] = value;
+                if (key in tcopy) continue;
+                tcopy[key] = value;
             }
 
-            return { id: `${rpage.path}#${t.line}`, data: copy };
+            return { id: `${pageData.path}#${t.line}`, data: tcopy };
         });
 
         for (let task of pageTasks) incomingTasks.push(task);
@@ -415,7 +418,7 @@ export async function executeTask(
 
     // Extract information about the origin page to add to the root context.
     let rootContext = new Context(defaultLinkHandler(index, origin), settings, {
-        this: index.pages.get(origin)?.toObject(index) ?? {},
+        this: index.pages.get(origin)?.serialize(index) ?? {},
     });
 
     return executeCore(incomingTasks, rootContext, query.operations).map(core => {
@@ -435,9 +438,9 @@ export function executeInline(
     origin: string,
     index: FullIndex,
     settings: QuerySettings
-): Result<LiteralValue, string> {
+): Result<Literal, string> {
     return new Context(defaultLinkHandler(index, origin), settings, {
-        this: index.pages.get(origin)?.toObject(index) ?? {},
+        this: index.pages.get(origin)?.serialize(index) ?? {},
     }).evaluate(field);
 }
 
@@ -451,7 +454,7 @@ export function defaultLinkHandler(index: FullIndex, origin: string): LinkHandle
             let realPage = index.pages.get(realFile.path);
             if (!realPage) return null;
 
-            return realPage.toObject(index);
+            return realPage.serialize(index);
         },
         normalize: link => {
             let realFile = index.metadataCache.getFirstLinkpathDest(link, origin);
@@ -477,13 +480,13 @@ export async function executeCalendar(
 
     // Extract information about the origin page to add to the root context.
     let rootContext = new Context(defaultLinkHandler(index, origin), settings, {
-        this: index.pages.get(origin)?.toObject(index) ?? {},
+        this: index.pages.get(origin)?.serialize(index) ?? {},
     });
 
     let targetField = (query.header as CalendarQuery).field.field;
     let fields: Record<string, Field> = {
         target: targetField,
-        link: { type: "index", object: { type: "variable", name: "file" }, index: { type: "variable", name: "link" } },
+        link: Fields.indexVariable("file.link"),
     };
 
     return executeCoreExtract(fileset.value, rootContext, query.operations, fields).map(core => {
@@ -500,5 +503,5 @@ export async function executeCalendar(
 
 export interface CalendarExecution {
     core: CoreExecution;
-    data: { date: DateTime; link: Link; value?: LiteralValue[] }[];
+    data: { date: DateTime; link: Link; value?: Literal[] }[];
 }

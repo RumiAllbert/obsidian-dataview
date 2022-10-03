@@ -1,17 +1,20 @@
 /** Fancy wrappers for the JavaScript API, used both by external plugins AND by the dataview javascript view. */
 
 import { App, Component } from "obsidian";
-import { FullIndex } from "data/index";
+import { FullIndex } from "data-index";
 import { renderValue, renderErrorPre } from "ui/render";
-import { DataviewApi, DataviewIOApi } from "api/plugin-api";
-import { DataviewSettings } from "settings";
-import { DataObject, Link, Values, Task } from "data/value";
+import type { DataviewApi, DataviewIOApi, QueryApiSettings, QueryResult } from "api/plugin-api";
+import { DataviewSettings, ExportSettings } from "settings";
+import { DataObject, Grouping, Link, Literal, Values, Widgets } from "data-model/value";
 import { BoundFunctionImpl, DEFAULT_FUNCTIONS, Functions } from "expression/functions";
 import { Context } from "expression/context";
 import { defaultLinkHandler } from "query/engine";
 import { DateTime, Duration } from "luxon";
 import * as Luxon from "luxon";
 import { DataArray } from "./data-array";
+import { SListItem } from "data-model/serialized/markdown";
+import { EXPRESSION } from "expression/parse";
+import { Result } from "api/result";
 
 /** Asynchronous API calls related to file / system IO. */
 export class DataviewInlineIOApi {
@@ -67,6 +70,9 @@ export class DataviewInlineApi {
     /** Value utilities which allow for type-checking and comparisons. */
     public value = Values;
 
+    /** Widget utility functions for creating built-in widgets. */
+    public widget = Widgets;
+
     /** IO utilities which are largely asynchronous. */
     public io: DataviewInlineIOApi;
 
@@ -76,28 +82,23 @@ export class DataviewInlineApi {
     /** Dataview functions which can be called from DataviewJS. */
     public func: Record<string, BoundFunctionImpl>;
 
-    constructor(
-        index: FullIndex,
-        component: Component,
-        container: HTMLElement,
-        app: App,
-        settings: DataviewSettings,
-        verNum: string,
-        currentFilePath: string
-    ) {
-        this.index = index;
+    constructor(api: DataviewApi, component: Component, container: HTMLElement, currentFilePath: string) {
+        this.index = api.index;
+        this.app = api.app;
+        this.settings = api.settings;
+
         this.component = component;
         this.container = container;
-        this.app = app;
         this.currentFilePath = currentFilePath;
-        this.settings = settings;
 
-        this.api = new DataviewApi(this.app, this.index, this.settings, verNum);
+        this.api = api;
         this.io = new DataviewInlineIOApi(this.api.io, this.currentFilePath);
 
         // Set up the evaluation context with variables from the current file.
-        let fileMeta = this.index.pages.get(this.currentFilePath)?.toObject(this.index) ?? {};
-        this.evaluationContext = new Context(defaultLinkHandler(this.index, this.currentFilePath), settings, fileMeta);
+        let fileMeta = this.index.pages.get(this.currentFilePath)?.serialize(this.index) ?? {};
+        this.evaluationContext = new Context(defaultLinkHandler(this.index, this.currentFilePath), this.settings, {
+            this: fileMeta,
+        });
 
         this.func = Functions.bindAll(DEFAULT_FUNCTIONS, this.evaluationContext);
     }
@@ -126,6 +127,75 @@ export class DataviewInlineApi {
         return this.page(this.currentFilePath);
     }
 
+    ///////////////////////////////
+    // Dataview Query Evaluation //
+    ///////////////////////////////
+
+    /** Execute a Dataview query, returning the results in programmatic form. */
+    public async query(
+        source: string,
+        originFile?: string,
+        settings?: QueryApiSettings
+    ): Promise<Result<QueryResult, string>> {
+        return this.api.query(source, originFile ?? this.currentFilePath, settings);
+    }
+
+    /** Error-throwing version of {@link query}. */
+    public async tryQuery(source: string, originFile?: string, settings?: QueryApiSettings): Promise<QueryResult> {
+        return this.api.tryQuery(source, originFile ?? this.currentFilePath, settings);
+    }
+
+    /** Execute a Dataview query, returning the results in Markdown. */
+    public async queryMarkdown(
+        source: string,
+        originFile?: string,
+        settings?: QueryApiSettings
+    ): Promise<Result<string, string>> {
+        return this.api.queryMarkdown(source, originFile ?? this.currentFilePath, settings);
+    }
+
+    /** Error-throwing version of {@link queryMarkdown}. */
+    public async tryQueryMarkdown(source: string, originFile?: string, settings?: QueryApiSettings): Promise<string> {
+        return this.api.tryQueryMarkdown(source, originFile ?? this.currentFilePath, settings);
+    }
+
+    /**
+     * Evaluate a dataview expression (like '2 + 2' or 'link("hello")'), returning the evaluated result.
+     * This takes an optional second argument which provides definitions for variables, such as:
+     *
+     * ```
+     * dv.evaluate("x + 6", { x: 2 }) = 8
+     * dv.evaluate('link(target)', { target: "Okay" }) = [[Okay]]
+     * ```
+     *
+     * Note that `this` is implicitly available and refers to the current file.
+     *
+     * This method returns a Result type instead of throwing an error; you can check the result of the
+     * execution via `result.successful` and obtain `result.value` or `result.error` resultingly. If
+     * you'd rather this method throw on an error, use `dv.tryEvaluate`.
+     */
+    public evaluate(expression: string, context?: DataObject): Result<Literal, string> {
+        let field = EXPRESSION.field.parse(expression);
+        if (!field.status) return Result.failure(`Failed to parse expression "${expression}"`);
+
+        return this.evaluationContext.evaluate(field.value, context);
+    }
+
+    /** Error-throwing version of `dv.evaluate`. */
+    public tryEvaluate(expression: string, context?: DataObject): Literal {
+        return this.evaluate(expression, context).orElseThrow();
+    }
+
+    /** Execute a Dataview query and embed it into the current view. */
+    public async execute(source: string) {
+        this.api.execute(source, this.container, this.component, this.currentFilePath);
+    }
+
+    /** Execute a DataviewJS query and embed it into the current view. */
+    public async executeJs(code: string) {
+        this.api.executeJs(code, this.container, this.component, this.currentFilePath);
+    }
+
     /////////////
     // Utility //
     /////////////
@@ -141,6 +211,11 @@ export class DataviewInlineApi {
     /** Return true if theg given value is a javascript array OR a dataview data array. */
     public isArray(raw: any): raw is DataArray<any> | Array<any> {
         return this.api.isArray(raw);
+    }
+
+    /** Return true if the given value is a dataview data array; this returns FALSE for plain JS arrays. */
+    public isDataArray(raw: unknown): raw is DataArray<any> {
+        return DataArray.isDataArray(raw);
     }
 
     /** Create a dataview file link to the given path. */
@@ -168,6 +243,21 @@ export class DataviewInlineApi {
         return this.api.duration(dur);
     }
 
+    /** Parse a raw textual value into a complex Dataview type, if possible. */
+    public parse(value: string): Literal {
+        return this.api.parse(value);
+    }
+
+    /** Convert a basic JS type into a Dataview type by parsing dates, links, durations, and so on. */
+    public literal(value: any): Literal {
+        return this.api.literal(value);
+    }
+
+    /** Deep clone the given literal, returning a new literal which is independent of the original. */
+    public clone(value: Literal): Literal {
+        return Values.deepCopy(value);
+    }
+
     /**
      * Compare two arbitrary JavaScript values using Dataview's default comparison rules. Returns a negative value if
      * a < b, 0 if a = b, and a positive value if a > b.
@@ -186,36 +276,37 @@ export class DataviewInlineApi {
     /////////////////////////
 
     /** Render an HTML element, containing arbitrary text. */
-    public async el<K extends keyof HTMLElementTagNameMap>(
+    public el<K extends keyof HTMLElementTagNameMap>(
         el: K,
         text: any,
-        options?: DomElementInfo
-    ): Promise<HTMLElementTagNameMap[K]> {
+        { container = this.container, ...options }: DomElementInfo & { container?: HTMLElement } = {}
+    ): HTMLElementTagNameMap[K] {
         let wrapped = Values.wrapValue(text);
+
         if (wrapped === null || wrapped === undefined) {
-            return this.container.createEl(el, Object.assign({ text }, options));
+            return container.createEl(el, Object.assign({ text }, options));
         }
 
-        let _el = this.container.createEl(el, options);
-        await renderValue(wrapped.value, _el, this.currentFilePath, this.component, this.settings, true);
+        let _el = container.createEl(el, options);
+        renderValue(wrapped.value, _el, this.currentFilePath, this.component, this.settings, true);
         return _el;
     }
 
     /** Render an HTML header; the level can be anything from 1 - 6. */
-    public async header(level: number, text: any, options?: DomElementInfo): Promise<HTMLHeadingElement> {
+    public header(level: number, text: any, options?: DomElementInfo): HTMLHeadingElement {
         let header = { 1: "h1", 2: "h2", 3: "h3", 4: "h4", 5: "h5", 6: "h6" }[level];
         if (!header) throw Error(`Unrecognized level '${level}' (expected 1, 2, 3, 4, 5, or 6)`);
 
-        return this.el(header as keyof HTMLElementTagNameMap, text, options) as Promise<HTMLHeadingElement>;
+        return this.el(header as keyof HTMLElementTagNameMap, text, options) as HTMLHeadingElement;
     }
 
     /** Render an HTML paragraph, containing arbitrary text. */
-    public async paragraph(text: any, options?: DomElementInfo): Promise<HTMLParagraphElement> {
+    public paragraph(text: any, options?: DomElementInfo): HTMLParagraphElement {
         return this.el("p", text, options);
     }
 
     /** Render an inline span, containing arbitrary text. */
-    public async span(text: any, options?: DomElementInfo): Promise<HTMLSpanElement> {
+    public span(text: any, options?: DomElementInfo): HTMLSpanElement {
         return this.el("span", text, options);
     }
 
@@ -228,6 +319,7 @@ export class DataviewInlineApi {
         let simpleViewFile = this.app.metadataCache.getFirstLinkpathDest(viewName + ".js", this.currentFilePath);
         if (simpleViewFile) {
             let contents = await this.app.vault.read(simpleViewFile);
+            if (contents.contains("await")) contents = "(async () => { " + contents + " })()";
             let func = new Function("dv", "input", contents);
 
             try {
@@ -259,7 +351,9 @@ export class DataviewInlineApi {
         }
 
         let viewContents = await this.app.vault.read(viewFile);
+        if (viewContents.contains("await")) viewContents = "(async () => { " + viewContents + " })()";
         let viewFunction = new Function("dv", "input", viewContents);
+
         try {
             let result = await Promise.resolve(viewFunction(this, input));
             if (result)
@@ -294,8 +388,31 @@ export class DataviewInlineApi {
     }
 
     /** Render a dataview task view with the given tasks. */
-    public taskList(tasks: Task[] | DataArray<Task>, groupByFile: boolean = true) {
+    public taskList(tasks: Grouping<SListItem>, groupByFile: boolean = true) {
         return this.api.taskList(tasks, groupByFile, this.container, this.component, this.currentFilePath);
+    }
+
+    ////////////////////////
+    // Markdown Rendering //
+    ////////////////////////
+
+    /** Render a table directly to markdown, returning the markdown. */
+    public markdownTable(
+        headers: string[],
+        values?: any[][] | DataArray<any>,
+        settings?: Partial<ExportSettings>
+    ): string {
+        return this.api.markdownTable(headers, values, settings);
+    }
+
+    /** Render a list directly to markdown, returning the markdown. */
+    public markdownList(values?: any[] | DataArray<any> | undefined, settings?: Partial<ExportSettings>) {
+        return this.api.markdownList(values, settings);
+    }
+
+    /** Render at ask list directly to markdown, returning the markdown. */
+    public markdownTaskList(values: Grouping<SListItem>, settings?: Partial<ExportSettings>) {
+        return this.api.markdownTaskList(values, settings);
     }
 }
 
@@ -317,17 +434,4 @@ export async function asyncEvalInContext(script: string, context: any): Promise<
     } else {
         return Promise.resolve(evalInContext(script, context));
     }
-}
-
-/** Make a full API context which a script can be evaluted in. */
-export function makeApiContext(
-    index: FullIndex,
-    component: Component,
-    app: App,
-    settings: DataviewSettings,
-    verNum: string,
-    container: HTMLElement,
-    originFile: string
-): DataviewInlineApi {
-    return new DataviewInlineApi(index, component, container, app, settings, verNum, originFile);
 }

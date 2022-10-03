@@ -1,41 +1,19 @@
-import {
-    App,
-    Component,
-    debounce,
-    MarkdownPostProcessorContext,
-    MarkdownRenderChild,
-    Plugin,
-    PluginSettingTab,
-    Setting,
-} from "obsidian";
-import { renderCodeBlock, renderErrorPre, renderValue } from "ui/render";
-import { FullIndex } from "data/index";
-import { Query } from "query/query";
+import { App, Component, debounce, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { renderErrorPre } from "ui/render";
+import { FullIndex } from "data-index/index";
 import { parseField } from "expression/parse";
-import { parseQuery } from "query/parse";
-import { canonicalizeVarName, tryOrPropogate } from "util/normalize";
-import { DataviewApi } from "api/plugin-api";
-import { DataviewSettings, DEFAULT_QUERY_SETTINGS, DEFAULT_SETTINGS, QuerySettings } from "settings";
-import { extractInlineFields, parseInlineValue } from "data/parse/inline-field";
-import { API_NAME, DvAPIInterface } from "./typings/api";
-import { DataviewListRenderer } from "ui/views/list-view";
-import { DataviewTableRenderer } from "ui/views/table-view";
-import { DataviewCalendarRenderer } from "ui/views/calendar-view";
+import { tryOrPropogate } from "util/normalize";
+import { DataviewApi, isDataviewDisabled } from "api/plugin-api";
+import { DataviewSettings, DEFAULT_QUERY_SETTINGS, DEFAULT_SETTINGS } from "settings";
 import { DataviewInlineRenderer } from "ui/views/inline-view";
-import { DataviewInlineJSRenderer, DataviewJSRenderer } from "ui/views/js-view";
-import { DataviewTaskRenderer } from "ui/views/task-view";
+import { DataviewInlineJSRenderer } from "ui/views/js-view";
 import { currentLocale } from "util/locale";
 import { DateTime } from "luxon";
-
-declare module "obsidian" {
-    interface Workspace {
-        /** Sent to rendered dataview components to tell them to possibly refresh */
-        on(name: "dataview:refresh-views", callback: () => void, ctx?: any): EventRef;
-    }
-    interface MarkdownRenderChild extends Component {}
-}
-
-const API_NAME: API_NAME extends keyof typeof window ? API_NAME : never = "DataviewAPI" as const; // this line will throw error if name out of sync
+import { DataviewInlineApi } from "api/inline-api";
+import { replaceInlineFields } from "ui/views/inline-field";
+import { DataviewInit } from "ui/markdown";
+import { inlinePlugin } from "./ui/lp-render";
+import { Extension } from "@codemirror/state";
 
 export default class DataviewPlugin extends Plugin {
     /** Plugin-wide default settigns. */
@@ -44,24 +22,29 @@ export default class DataviewPlugin extends Plugin {
     /** The index that stores all dataview data. */
     public index: FullIndex;
     /** External-facing plugin API. */
-    public api: DvAPIInterface;
+    public api: DataviewApi;
+    /** CodeMirror 6 extensions that dataview installs. Tracked via array to allow for dynamic update. */
+    private cmExtension: Extension[];
 
     async onload() {
         // Settings initialization; write defaults first time around.
         this.settings = Object.assign(DEFAULT_SETTINGS, (await this.loadData()) ?? {});
         this.addSettingTab(new GeneralSettingsTab(this.app, this));
 
-        this.index = FullIndex.create(this.app.vault, this.app.metadataCache, () => {
-            if (this.settings.refreshEnabled) this.debouncedRefresh();
-        });
-        // Set up view refreshing
-        this.updateRefreshSettings();
-        this.addChild(this.index);
+        this.index = this.addChild(
+            FullIndex.create(this.app, this.manifest.version, () => {
+                if (this.settings.refreshEnabled) this.debouncedRefresh();
+            })
+        );
 
+        // Set up automatic (intelligent) view refreshing that debounces.
+        this.updateRefreshSettings();
+
+        // From this point onwards the dataview API is fully functional (even if the index needs to do some background indexing).
         this.api = new DataviewApi(this.app, this.index, this.settings, this.manifest.version);
 
         // Register API to global window object.
-        (window[API_NAME] = this.api) && this.register(() => delete window[API_NAME]);
+        (window["DataviewAPI"] = this.api) && this.register(() => delete window["DataviewAPI"]);
 
         // Dataview query language code blocks.
         this.registerPriorityCodeblockPostProcessor("dataview", -100, async (source: string, el, ctx) =>
@@ -74,9 +57,9 @@ export default class DataviewPlugin extends Plugin {
         );
 
         // Dataview inline queries.
-        this.registerPriorityMarkdownPostProcessor(-100, async (el, ctx) =>
-            this.dataviewInline(el, ctx, ctx.sourcePath)
-        );
+        this.registerPriorityMarkdownPostProcessor(-100, async (el, ctx) => {
+            this.dataviewInline(el, ctx, ctx.sourcePath);
+        });
 
         // Dataview inline-inline query fancy rendering. Runs at a low priority; should apply to Dataview views.
         this.registerPriorityMarkdownPostProcessor(100, async (el, ctx) => {
@@ -84,8 +67,38 @@ export default class DataviewPlugin extends Plugin {
             if (!this.settings.prettyRenderInlineFields || isDataviewDisabled(ctx.sourcePath)) return;
 
             // Handle p, header elements explicitly (opt-in rather than opt-out for now).
-            for (let p of el.findAllSelf("p,h1,h2,h3,h4,h5,h6,li,span,th,td"))
-                await replaceInlineFields(ctx, p, ctx.sourcePath, this.settings);
+            for (let p of el.findAllSelf("p,h1,h2,h3,h4,h5,h6,li,span,th,td")) {
+                const init: DataviewInit = {
+                    app: this.app,
+                    index: this.index,
+                    settings: this.settings,
+                    container: p,
+                };
+
+                await replaceInlineFields(ctx, init);
+            }
+        });
+
+        // editor extension for inline queries
+        this.cmExtension = [inlinePlugin(this.index, this.settings, this.api)];
+        this.registerEditorExtension(this.cmExtension);
+
+        // Dataview "force refresh" operation.
+        this.addCommand({
+            id: "dataview-force-refresh-views",
+            name: "Force Refresh All Views and Blocks",
+            callback: () => {
+                this.index.revision += 1;
+                this.app.workspace.trigger("dataview:refresh-views");
+            },
+        });
+
+        this.addCommand({
+            id: "dataview-drop-cache",
+            name: "Drop All Cached File Metadata",
+            callback: () => {
+                this.index.reinitialize();
+            },
         });
 
         // Run index initialization, which actually traverses the vault to index files.
@@ -97,8 +110,7 @@ export default class DataviewPlugin extends Plugin {
 
         // Not required anymore, though holding onto it for backwards-compatibility.
         this.app.metadataCache.trigger("dataview:api-ready", this.api);
-
-        console.log(`Dataview: Version ${this.manifest.version} Loaded`);
+        console.log(`Dataview: version ${this.manifest.version} (requires obsidian ${this.manifest.minAppVersion})`);
     }
 
     private debouncedRefresh: () => void = () => null;
@@ -111,7 +123,9 @@ export default class DataviewPlugin extends Plugin {
         );
     }
 
-    onunload() {}
+    public onunload() {
+        console.log(`Dataview: version ${this.manifest.version} unloaded.`);
+    }
 
     /** Register a markdown post processor with the given priority. */
     public registerPriorityMarkdownPostProcessor(
@@ -142,50 +156,7 @@ export default class DataviewPlugin extends Plugin {
         component: Component | MarkdownPostProcessorContext,
         sourcePath: string
     ) {
-        if (isDataviewDisabled(sourcePath)) {
-            renderCodeBlock(el, source);
-            return;
-        }
-
-        let maybeQuery = tryOrPropogate(() => parseQuery(source));
-
-        // In case of parse error, just render the error.
-        if (!maybeQuery.successful) {
-            renderErrorPre(el, "Dataview: " + maybeQuery.error);
-            return;
-        }
-
-        let query = maybeQuery.value;
-        switch (query.header.type) {
-            case "task":
-                component.addChild(
-                    new DataviewTaskRenderer(
-                        query as Query,
-                        el,
-                        this.index,
-                        sourcePath,
-                        this.app.vault,
-                        this.settings,
-                        this.app
-                    )
-                );
-                break;
-            case "list":
-                component.addChild(
-                    new DataviewListRenderer(query as Query, el, this.index, sourcePath, this.settings, this.app)
-                );
-                break;
-            case "table":
-                component.addChild(
-                    new DataviewTableRenderer(query as Query, el, this.index, sourcePath, this.settings, this.app)
-                );
-                break;
-            case "calendar":
-                component.addChild(
-                    new DataviewCalendarRenderer(query as Query, el, this.index, sourcePath, this.settings, this.app)
-                );
-                break;
-        }
+        this.api.execute(source, el, component, sourcePath);
     }
 
     /** Generate a DataviewJS view running the given source in the given element. */
@@ -195,14 +166,7 @@ export default class DataviewPlugin extends Plugin {
         component: Component | MarkdownPostProcessorContext,
         sourcePath: string
     ) {
-        if (isDataviewDisabled(sourcePath)) {
-            renderCodeBlock(el, source, "javascript");
-            return;
-        }
-
-        component.addChild(
-            new DataviewJSRenderer(source, el, this.app, this.index, sourcePath, this.settings, this.manifest.version)
-        );
+        this.api.executeJs(source, el, component, sourcePath);
     }
 
     /** Render all dataview inline expressions in the given element. */
@@ -218,23 +182,23 @@ export default class DataviewPlugin extends Plugin {
         for (let index = 0; index < codeblocks.length; index++) {
             let codeblock = codeblocks.item(index);
 
+            // Skip code inside of pre elements if not explicitly enabled.
+            if (
+                codeblock.parentElement &&
+                codeblock.parentElement.nodeName.toLowerCase() == "pre" &&
+                !this.settings.inlineQueriesInCodeblocks
+            )
+                continue;
+
             let text = codeblock.innerText.trim();
-            if (text.startsWith(this.settings.inlineJsQueryPrefix)) {
+            if (this.settings.inlineJsQueryPrefix.length > 0 && text.startsWith(this.settings.inlineJsQueryPrefix)) {
                 let code = text.substring(this.settings.inlineJsQueryPrefix.length).trim();
-                component.addChild(
-                    new DataviewInlineJSRenderer(
-                        code,
-                        el,
-                        codeblock,
-                        this.app,
-                        this.index,
-                        sourcePath,
-                        this.settings,
-                        this.manifest.version
-                    )
-                );
-            } else if (text.startsWith(this.settings.inlineQueryPrefix)) {
+                if (code.length == 0) continue;
+
+                component.addChild(new DataviewInlineJSRenderer(this.api, code, el, codeblock, sourcePath));
+            } else if (this.settings.inlineQueryPrefix.length > 0 && text.startsWith(this.settings.inlineQueryPrefix)) {
                 let potentialField = text.substring(this.settings.inlineQueryPrefix.length).trim();
+                if (potentialField.length == 0) continue;
 
                 let field = tryOrPropogate(() => parseField(potentialField));
                 if (!field.successful) {
@@ -266,9 +230,17 @@ export default class DataviewPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
-    /** Call the given callback when the dataview API has initialized. */
-    public withApi(callback: (api: DvAPIInterface) => void) {
+    /** @deprecated Call the given callback when the dataview API has initialized. */
+    public withApi(callback: (api: DataviewApi) => void) {
         callback(this.api);
+    }
+
+    /**
+     * Create an API element localized to the given path, with lifecycle management managed by the given component.
+     * The API will output results to the given HTML element.
+     */
+    public localApi(path: string, component: Component, el: HTMLElement): DataviewInlineApi {
+        return new DataviewInlineApi(this.api, component, el, path);
     }
 }
 
@@ -320,7 +292,11 @@ class GeneralSettingsTab extends PluginSettingTab {
                 text
                     .setPlaceholder("=")
                     .setValue(this.plugin.settings.inlineQueryPrefix)
-                    .onChange(async value => await this.plugin.updateSettings({ inlineQueryPrefix: value }))
+                    .onChange(async value => {
+                        if (value.length == 0) return;
+
+                        await this.plugin.updateSettings({ inlineQueryPrefix: value });
+                    })
             );
 
         new Setting(this.containerEl)
@@ -330,7 +306,20 @@ class GeneralSettingsTab extends PluginSettingTab {
                 text
                     .setPlaceholder("$=")
                     .setValue(this.plugin.settings.inlineJsQueryPrefix)
-                    .onChange(async value => await this.plugin.updateSettings({ inlineJsQueryPrefix: value }))
+                    .onChange(async value => {
+                        if (value.length == 0) return;
+
+                        await this.plugin.updateSettings({ inlineJsQueryPrefix: value });
+                    })
+            );
+
+        new Setting(this.containerEl)
+            .setName("Codeblock Inline Queries")
+            .setDesc("If enabled, inline queries will also be evaluated inside full codeblocks.")
+            .addToggle(toggle =>
+                toggle
+                    .setValue(this.plugin.settings.inlineQueriesInCodeblocks)
+                    .onChange(async value => await this.plugin.updateSettings({ inlineQueriesInCodeblocks: value }))
             );
 
         this.containerEl.createEl("h2", { text: "View Settings" });
@@ -468,103 +457,135 @@ class GeneralSettingsTab extends PluginSettingTab {
 
         this.containerEl.createEl("h3", { text: "Task Settings" });
 
-        new Setting(this.containerEl)
-            .setName("Task Link Type")
-            .setDesc("'Start' and 'End' place a symbol link in their respective location; 'None' disables linking.")
-            .addDropdown(dropdown =>
-                dropdown
-                    .addOption("start", "Start")
-                    .addOption("end", "End")
-                    .addOption("none", "None")
-                    .setValue(this.plugin.settings.taskLinkLocation)
-                    .onChange(async value => {
-                        await this.plugin.updateSettings({ taskLinkLocation: value as any });
-                        this.plugin.index.touch();
-                    })
-            );
-
-        new Setting(this.containerEl)
-            .setName("Task Link Text")
-            .setDesc("Text used when linking from a task to its source note in the 'Start' and 'End' link types.")
-            .addText(text =>
-                text.setValue(this.plugin.settings.taskLinkText).onChange(async value => {
-                    await this.plugin.updateSettings({ taskLinkText: value.trim() });
-                    this.plugin.index.touch();
-                })
-            );
+        let taskCompletionSubsettingsEnabled = this.plugin.settings.taskCompletionTracking;
+        let taskCompletionInlineSubsettingsEnabled =
+            taskCompletionSubsettingsEnabled && !this.plugin.settings.taskCompletionUseEmojiShorthand;
 
         new Setting(this.containerEl)
             .setName("Automatic Task Completion Tracking")
             .setDesc(
-                "If enabled, Dataview will automatically append tasks with their completion date when they are checked in Dataview views."
+                createFragment(el => {
+                    el.appendText(
+                        "If enabled, Dataview will automatically append tasks with their completion date when they are checked in Dataview views."
+                    );
+                    el.createEl("br");
+                    el.appendText(
+                        "Example with default field name and date format: - [x] my task [completion:: 2022-01-01]"
+                    );
+                })
             )
             .addToggle(toggle =>
                 toggle.setValue(this.plugin.settings.taskCompletionTracking).onChange(async value => {
                     await this.plugin.updateSettings({ taskCompletionTracking: value });
+                    taskCompletionSubsettingsEnabled = value;
+                    this.display();
                 })
             );
 
-        new Setting(this.containerEl)
-            .setName("Automatic Task Completion Field")
-            .setDesc(
-                "Text used as inline field key to track task completion date when toggling a task's checkbox in a dataview view."
-            )
-            .addText(text =>
-                text.setValue(this.plugin.settings.taskCompletionText).onChange(async value => {
-                    await this.plugin.updateSettings({ taskCompletionText: value.trim() });
-                })
+        let taskEmojiShorthand = new Setting(this.containerEl)
+            .setName("Use Emoji Shorthand for Completion")
+            .setDisabled(!taskCompletionSubsettingsEnabled);
+        if (taskCompletionSubsettingsEnabled)
+            taskEmojiShorthand
+                .setDesc(
+                    createFragment(el => {
+                        el.appendText(
+                            'If enabled, will use emoji shorthand instead of inline field formatting to fill out implicit task field "completion".'
+                        );
+                        el.createEl("br");
+                        el.appendText("Example: - [x] my task ✅ 2022-01-01");
+                        el.createEl("br");
+                        el.appendText(
+                            "Disable this to customize the completion date format or field name, or to use Dataview inline field formatting."
+                        );
+                        el.createEl("br");
+                        el.appendText('Only available when "Automatic Task Completion Tracking" is enabled.');
+                    })
+                )
+                .addToggle(toggle =>
+                    toggle.setValue(this.plugin.settings.taskCompletionUseEmojiShorthand).onChange(async value => {
+                        await this.plugin.updateSettings({ taskCompletionUseEmojiShorthand: value });
+                        taskCompletionInlineSubsettingsEnabled = taskCompletionSubsettingsEnabled && !value;
+                        this.display();
+                    })
+                );
+        else taskEmojiShorthand.setDesc('Only available when "Automatic Task Completion Tracking" is enabled.');
+
+        let taskFieldName = new Setting(this.containerEl)
+            .setName("Completion Field Name")
+            .setDisabled(!taskCompletionInlineSubsettingsEnabled);
+        if (taskCompletionInlineSubsettingsEnabled)
+            taskFieldName
+                .setDesc(
+                    createFragment(el => {
+                        el.appendText(
+                            "Text used as inline field key for task completion date when toggling a task's checkbox in a dataview view."
+                        );
+                        el.createEl("br");
+                        el.appendText(
+                            'Only available when "Automatic Task Completion Tracking" is enabled and "Use Emoji Shorthand for Completion" is disabled.'
+                        );
+                    })
+                )
+                .addText(text =>
+                    text.setValue(this.plugin.settings.taskCompletionText).onChange(async value => {
+                        await this.plugin.updateSettings({ taskCompletionText: value.trim() });
+                    })
+                );
+        else
+            taskFieldName.setDesc(
+                'Only available when "Automatic Task Completion Tracking" is enabled and "Use Emoji Shorthand for Completion" is disabled.'
             );
-    }
-}
 
-/** Replaces raw textual inline fields in text containers with pretty HTML equivalents. */
-async function replaceInlineFields(
-    ctx: MarkdownPostProcessorContext,
-    container: HTMLElement,
-    originFile: string,
-    settings: QuerySettings
-): Promise<Component | undefined> {
-    let inlineFields = extractInlineFields(container.innerHTML);
-    if (inlineFields.length == 0) return undefined;
-
-    let component = new MarkdownRenderChild(container);
-    ctx.addChild(component);
-
-    let result = container.innerHTML;
-    for (let x = inlineFields.length - 1; x >= 0; x--) {
-        let field = inlineFields[x];
-        let renderContainer = document.createElement("span");
-        renderContainer.addClasses(["dataview", "inline-field"]);
-
-        // Block inline fields render the key, parenthesis ones do not.
-        if (field.wrapping == "[") {
-            renderContainer.createSpan({
-                text: field.key,
-                cls: ["dataview", "inline-field-key"],
-                attr: {
-                    "data-dv-key": field.key,
-                    "data-dv-norm-key": canonicalizeVarName(field.key),
-                },
-            });
-
-            let valueContainer = renderContainer.createSpan({ cls: ["dataview", "inline-field-value"] });
-            await renderValue(parseInlineValue(field.value), valueContainer, originFile, component, settings, false);
+        let taskDtFormat = new Setting(this.containerEl)
+            .setName("Completion Date Format")
+            .setDisabled(!taskCompletionInlineSubsettingsEnabled);
+        if (taskCompletionInlineSubsettingsEnabled) {
+            let descTextLines = [
+                "Date-time format for task completion date when toggling a task's checkbox in a dataview view (see Luxon date format options).",
+                'Only available when "Automatic Task Completion Tracking" is enabled and "Use Emoji Shorthand for Completion" is disabled.',
+                "Currently: ",
+            ];
+            taskDtFormat
+                .setDesc(
+                    createFragment(el => {
+                        el.appendText(descTextLines[0]);
+                        el.createEl("br");
+                        el.appendText(descTextLines[1]);
+                        el.createEl("br");
+                        el.appendText(
+                            descTextLines[2] +
+                                DateTime.now().toFormat(this.plugin.settings.taskCompletionDateFormat, {
+                                    locale: currentLocale(),
+                                })
+                        );
+                    })
+                )
+                .addText(text =>
+                    text
+                        .setPlaceholder(DEFAULT_SETTINGS.taskCompletionDateFormat)
+                        .setValue(this.plugin.settings.taskCompletionDateFormat)
+                        .onChange(async value => {
+                            taskDtFormat.setDesc(
+                                createFragment(el => {
+                                    el.appendText(descTextLines[0]);
+                                    el.createEl("br");
+                                    el.appendText(descTextLines[1]);
+                                    el.createEl("br");
+                                    el.appendText(
+                                        descTextLines[2] +
+                                            DateTime.now().toFormat(value.trim(), { locale: currentLocale() })
+                                    );
+                                })
+                            );
+                            await this.plugin.updateSettings({ taskCompletionDateFormat: value.trim() });
+                            this.plugin.index.touch();
+                        })
+                );
         } else {
-            let valueContainer = renderContainer.createSpan({ cls: ["dataview", "inline-field-standalone-value"] });
-            await renderValue(parseInlineValue(field.value), valueContainer, originFile, component, settings, false);
+            taskDtFormat.setDesc(
+                'Only available when "Automatic Task Completion Tracking" is enabled and "Use Emoji Shorthand for Completion" is disabled.'
+            );
         }
-
-        result = result.slice(0, field.start) + renderContainer.outerHTML + result.slice(field.end);
     }
-
-    container.innerHTML = result;
-    return component;
-}
-
-/** Determines if source-path has a `?no-dataview` annotation that disables dataview. */
-function isDataviewDisabled(sourcePath: string): boolean {
-    let questionLocation = sourcePath.lastIndexOf("?");
-    if (questionLocation == -1) return false;
-
-    return sourcePath.substring(questionLocation).contains("no-dataview");
 }

@@ -1,8 +1,8 @@
 import { DateTime, Duration } from "luxon";
-import { Link, LiteralValue } from "data/value";
+import { Literal, Link } from "data-model/value";
 import * as P from "parsimmon";
 import { BinaryOp, Field, Fields, LambdaField, ListField, LiteralField, ObjectField, VariableField } from "./field";
-import { FolderSource, NegatedSource, Source, SourceOp, Sources, TagSource, CsvSource } from "data/source";
+import { FolderSource, NegatedSource, Source, SourceOp, Sources, TagSource, CsvSource } from "data-index/source";
 import { normalizeDuration } from "util/normalize";
 import { Result } from "api/result";
 import emojiRegex from "emoji-regex";
@@ -87,24 +87,21 @@ export const KEYWORDS = ["FROM", "WHERE", "LIMIT", "GROUP", "FLATTEN"];
 // Utilities //
 ///////////////
 
+/** Split on unescaped pipes in an inner link. */
+function splitOnUnescapedPipe(link: string): [string, string | undefined] {
+    let pipe = -1;
+    while ((pipe = link.indexOf("|", pipe + 1)) >= 0) {
+        if (pipe > 0 && link[pipe - 1] == "\\") continue;
+        return [link.substring(0, pipe).replace(/\\\|/g, "|"), link.substring(pipe + 1)];
+    }
+
+    return [link.replace(/\\\|/g, "|"), undefined];
+}
+
 /** Attempt to parse the inside of a link to pull out display name, subpath, etc. */
-export function parseInnerLink(link: string): Link {
-    let display: string | undefined = undefined;
-    if (link.includes("|")) {
-        let split = link.split("|");
-        link = split[0];
-        display = split[1];
-    }
-
-    if (link.includes("#^")) {
-        let split = link.split("#^");
-        return Link.block(split[0], split[1], false, display);
-    } else if (link.includes("#")) {
-        let split = link.split("#");
-        return Link.header(split[0], split[1], false, display);
-    }
-
-    return Link.file(link, false, display);
+export function parseInnerLink(rawlink: string): Link {
+    let [link, display] = splitOnUnescapedPipe(rawlink);
+    return Link.infer(link, false, display);
 }
 
 /** Create a left-associative binary parser which parses the given sub-element and separator. Handles whitespace. */
@@ -147,7 +144,7 @@ export function chainOpt<T>(base: P.Parser<T>, ...funcs: ((r: T) => P.Parser<T>)
 ////////////////////////
 
 type PostfixFragment =
-    | { type: "dot"; field: Field }
+    | { type: "dot"; field: string }
     | { type: "index"; field: Field }
     | { type: "function"; fields: Field[] };
 
@@ -158,7 +155,6 @@ interface ExpressionLanguage {
     bool: boolean;
     tag: string;
     identifier: string;
-    identifierDot: string;
     link: Link;
     embedLink: Link;
     rootDate: DateTime;
@@ -199,9 +195,9 @@ interface ExpressionLanguage {
     listField: ListField;
     objectField: ObjectField;
 
-    atomInlineField: LiteralValue;
-    inlineFieldList: LiteralValue[];
-    inlineField: LiteralValue;
+    atomInlineField: Literal;
+    inlineFieldList: Literal[];
+    inlineField: Literal;
 
     negatedField: Field;
     atomField: Field;
@@ -261,23 +257,15 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
     tag: _ =>
         P.seqMap(
             P.string("#"),
-            P.alt(P.regexp(/[\p{Letter}0-9_/-]/u), P.regexp(EMOJI_REGEX)).many(),
+            P.alt(P.regexp(/[\p{Letter}0-9_/-]/u).desc("text"), P.regexp(EMOJI_REGEX).desc("text")).many(),
             (start, rest) => start + rest.join("")
         ).desc("tag ('#hello/stuff')"),
 
     // A variable identifier, which is alphanumeric and must start with a letter or... emoji.
     identifier: _ =>
         P.seqMap(
-            P.alt(P.regexp(/\p{Letter}/u), P.regexp(EMOJI_REGEX)),
-            P.alt(P.regexp(/[0-9\p{Letter}_-]/u), P.regexp(EMOJI_REGEX)).many(),
-            (first, rest) => first + rest.join("")
-        ).desc("variable identifier"),
-
-    // A variable identifier, which is alphanumeric and must start with a letter. Can include dots.
-    identifierDot: _ =>
-        P.seqMap(
-            P.alt(P.regexp(/\p{Letter}/u), P.regexp(EMOJI_REGEX)),
-            P.alt(P.regexp(/[0-9\p{Letter}\._-]/u), P.regexp(EMOJI_REGEX)).many(),
+            P.alt(P.regexp(/\p{Letter}/u), P.regexp(EMOJI_REGEX).desc("text")),
+            P.alt(P.regexp(/[0-9\p{Letter}_-]/u), P.regexp(EMOJI_REGEX).desc("text")).many(),
             (first, rest) => first + rest.join("")
         ).desc("variable identifier"),
 
@@ -293,7 +281,7 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
         P.seqMap(P.string("!").atMost(1), q.link, (p, l) => {
             if (p.length > 0) l.embed = true;
             return l;
-        }),
+        }).desc("file link"),
 
     // Binary plus or minus operator.
     binaryPlusMinus: _ =>
@@ -303,9 +291,9 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
 
     // Binary times or divide operator.
     binaryMulDiv: _ =>
-        P.regexp(/\*|\//)
+        P.regexp(/\*|\/|%/)
             .map(str => str as BinaryOp)
-            .desc("'*' or '/'"),
+            .desc("'*' or '/' or '%'"),
 
     // Binary comparison operator.
     binaryCompareOp: _ =>
@@ -366,14 +354,16 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
                         dt.setZone(zone, { keepLocalTime: true })
                     )
                 )
-        ).assert((dt: DateTime) => dt.isValid, "valid date"),
+        )
+            .assert((dt: DateTime) => dt.isValid, "valid date")
+            .desc("date in format YYYY-MM[-DDTHH-MM-SS.MS]"),
 
     // A date, plus various shorthand times of day it could be.
     datePlus: q =>
         P.alt<DateTime>(
             q.dateShorthand.map(d => DATE_SHORTHANDS[d]()),
             q.date
-        ),
+        ).desc("date in format YYYY-MM[-DDTHH-MM-SS.MS] or in shorthand"),
 
     // A duration of time.
     durationType: _ =>
@@ -385,7 +375,8 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
     duration: q =>
         P.seqMap(q.number, P.optWhitespace, q.durationType, (count, _, t) => DURATION_TYPES[t].mapUnits(x => x * count))
             .sepBy1(P.string(",").trim(P.optWhitespace).or(P.optWhitespace))
-            .map(durations => durations.reduce((p, c) => p.plus(c))),
+            .map(durations => durations.reduce((p, c) => p.plus(c)))
+            .desc("duration like 4hr2min"),
 
     // A raw null value.
     rawNull: _ => P.string("null"),
@@ -487,6 +478,7 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
             q.date,
             q.duration.map(d => normalizeDuration(d)),
             q.string,
+            q.tag,
             q.embedLink,
             q.bool,
             q.number,
@@ -503,6 +495,8 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
 
     atomField: q =>
         P.alt(
+            // Place embed links above negated fields as they are the special parser case '![[thing]]' and are generally unambigious.
+            q.embedLink.map(l => Fields.literal(l)),
             q.negatedField,
             q.linkField,
             q.listField,
@@ -523,6 +517,8 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
             for (let post of postfixes) {
                 switch (post.type) {
                     case "dot":
+                        result = Fields.index(result, Fields.literal(post.field));
+                        break;
                     case "index":
                         result = Fields.index(result, post.field);
                         break;
@@ -558,7 +554,7 @@ export const EXPRESSION = P.createLanguage<ExpressionLanguage>({
 
     dotPostfix: q =>
         P.seqMap(P.string("."), q.identifier, (_, field) => {
-            return { type: "dot", field: Fields.literal(field) };
+            return { type: "dot", field: field };
         }),
     indexPostfix: q =>
         P.seqMap(P.string("["), P.optWhitespace, q.field, P.optWhitespace, P.string("]"), (_, _2, field, _3, _4) => {

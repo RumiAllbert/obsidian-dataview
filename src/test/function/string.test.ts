@@ -102,3 +102,19 @@ describe("padright()", () => {
     test("(hello, 7, x)", () => expect(parseEval(`padright("hello", 7, "x")`)).toEqual("helloxx"));
     test("(, 1)", () => expect(parseEval(`padright("", 1)`)).toEqual(" "));
 });
+
+describe("substring()", () => {
+    test("(yes, 1)", () => expect(parseEval(`substring("yes", 1)`)).toEqual("es"));
+    test("(hello, 3)", () => expect(parseEval(`substring("hello", 3)`)).toEqual("lo"));
+    test("(hello, 3, 20)", () => expect(parseEval(`substring("hello", 3, 20)`)).toEqual("lo"));
+    test("(hello, 2, 4)", () => expect(parseEval(`substring("hello", 2, 4)`)).toEqual("ll"));
+    test("(, 0)", () => expect(parseEval(`substring("", 0)`)).toEqual(""));
+});
+
+describe("truncate()", () => {
+    test("8", () => check(`truncate("Hello There!", 8)`).toEqual("Hello..."));
+    test("10", () => check(`truncate("Hello There!", 10)`).toEqual("Hello T..."));
+    test("10", () => check(`truncate("Hello There!", 10, "!")`).toEqual("Hello The!"));
+});
+
+export const check = (text: string) => expect(parseEval(text));

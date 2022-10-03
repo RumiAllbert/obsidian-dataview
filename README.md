@@ -32,7 +32,7 @@ list from #game/moba or #game/crpg
 
 ---
 
-List all tasks in un-completed projects:
+List all markdown [tasks](https://blacksmithgu.github.io/obsidian-dataview/data-annotation/#tasks) in un-completed projects:
 
 ~~~markdown
 ```dataview
@@ -62,10 +62,7 @@ for (let group of dv.pages("#book").where(p => p["time-read"].year == 2021).grou
 
 ## Usage
 
-For a full description of all features, instructions, and examples, see the
-[reference](https://blacksmithgu.github.io/obsidian-dataview/). For a more brief outline, let us examine the two major
-aspects of Dataview: *data* and
-*querying*.
+For a full description of all features, instructions, and examples, see the [reference](https://blacksmithgu.github.io/obsidian-dataview/). For a more brief outline, let us examine the two major aspects of Dataview: *data* and *querying*.
 
 #### **Data**
 
@@ -93,6 +90,8 @@ thoughts:
 
 Basic Field:: Value
 **Bold Field**:: Nice!
+You can also write [field:: inline fields]; multiple [field2:: on the same line].
+If you want to hide the (field3:: key), you can do that too.
 ```
 
 #### **Querying**
@@ -134,6 +133,13 @@ modes:
    This page was last modified at `$= dv.current().file.mtime`.
    ~~~
 
+#### JavaScript Queries: Security Note
+
+JavaScript queries are very powerful, but they run at the same level of access as any other Obsidian plugin. This means
+they can potentially rewrite, create, or delete files, as well as make network calls. You should generally write
+JavaScript queries yourself or use scripts that you understand or that come from reputable sources. Regular Dataview
+queries are sandboxed and cannot make negative changes to your vault (in exchange for being much more limited).
+
 ## Contributing
 
 Contributions via bug reports, bug fixes, documentation, and general improvements are always welcome. For more major
@@ -158,11 +164,12 @@ reload itself.
 
 #### Installing to Other Vaults
 
-If you want to dogfood dataview in your real vault, you can build and install manually:
+If you want to dogfood dataview in your real vault, you can build and install manually. Dataview is predominantly a
+read-only store, so this should be safe, but watch out if you are adjusting functionality that performs file edits!
 
 ```console
 foo@bar:~/obsidian-dataview$ npm run build
-foo@bar:~/obsidian-dataview$ ./install-built.sh path/to/your/vault
+foo@bar:~/obsidian-dataview$ ./scripts/install-built path/to/your/vault
 ```
 
 #### Building Documentation

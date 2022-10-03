@@ -1,4 +1,4 @@
-import { FullIndex } from "data";
+import { FullIndex } from "data-index";
 import { Link } from "index";
 import { App } from "obsidian";
 import { Calendar, ICalendarSource, IDayMetadata, IDot } from "obsidian-calendar-ui";
@@ -26,7 +26,7 @@ export class DataviewCalendarRenderer extends DataviewRefreshableRenderer {
         public settings: DataviewSettings,
         public app: App
     ) {
-        super(container);
+        super(container, index, app, settings);
     }
 
     async render() {
@@ -94,9 +94,8 @@ export class DataviewCalendarRenderer extends DataviewRefreshableRenderer {
                     if (file == null) {
                         return;
                     }
-                    const mode = (this.app.vault as any).getConfig("defaultViewMode");
                     const leaf = renderer.app.workspace.getUnpinnedLeaf();
-                    await leaf.openFile(file, { active: true, mode });
+                    await leaf.openFile(file, { active: true });
                 },
                 showWeekNums: false,
                 sources,

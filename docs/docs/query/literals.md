@@ -12,13 +12,14 @@ Literal|Description
 `-1337`|A negative number
 `"The quick brown fox jumps over the lazy dog"`|Some text, commonly referred to by programmers as a *string*
 `[[Link]]`|A link to the file named "Link"
+`[[]]`|A link to the current file
 `[1, 2, 3]`|A list of numbers 1, 2, and 3
 `[[1, 2],[3, 4]]`|A list of lists
 `{ a: 1, b: 2 }`|An object|
 
 ### Dates
 
-Note that `date()` is also a [function](query/functions/#dateany)
+Note that `date()` is also a [function](../functions/#dateany), which can be called on text to extract dates.
 
 Literal|Description
 -|-
@@ -48,22 +49,22 @@ Literal|Description
 #### Minutes
 Literal|Description
 -|-
-`dur(1 m)`|one minute|
-`dur(3 m)`|three minutes|
-`dur(1 min)`|one minute|
-`dur(3 mins)`|three minutes|
-`dur(1 minute)`|one minute|
-`dur(3 minutes)`|three minutes|
+`dur(1 m)`|one minute
+`dur(3 m)`|three minutes
+`dur(1 min)`|one minute
+`dur(3 mins)`|three minutes
+`dur(1 minute)`|one minute
+`dur(3 minutes)`|three minutes
 
 #### Hours
 Literal|Description
 -|-
-`dur(1 h)`|one hour|
-`dur(3 h)`|three hours|
-`dur(1 hr)`|one hour|
-`dur(3 hrs)`|three hours|
-`dur(1 hour)`|one hour|
-`dur(3 hours)`|three hours|
+`dur(1 h)`|one hour
+`dur(3 h)`|three hours
+`dur(1 hr)`|one hour
+`dur(3 hrs)`|three hours
+`dur(1 hour)`|one hour
+`dur(3 hours)`|three hours
 
 #### Days
 Literal|Description

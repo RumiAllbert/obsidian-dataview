@@ -2,8 +2,8 @@ import { BinaryOpField, Fields, LiteralField } from "expression/field";
 import { EXPRESSION } from "expression/parse";
 import { DateTime, Duration } from "luxon";
 import { Success } from "parsimmon";
-import { Sources } from "data/source";
-import { Link, Values } from "data/value";
+import { Sources } from "data-index/source";
+import { Values, Link } from "data-model/value";
 
 // <-- Integer Literals -->
 
@@ -270,14 +270,26 @@ describe("Durations", () => {
 
 // <-- Links -->
 
-test("Parse Link", () => {
-    expect(EXPRESSION.field.tryParse("[[test/Main]]")).toEqual(Fields.literal(Link.file("test/Main", false)));
-    expect(EXPRESSION.field.tryParse("[[test/Main.md]]")).toEqual(Fields.literal(Link.file("test/Main.md", false)));
-    expect(EXPRESSION.field.tryParse("[[simple0]]")).toEqual(Fields.literal(Link.file("simple0", false)));
-    expect(EXPRESSION.field.tryParse("[[2020-08-15]]")).toEqual(Fields.literal(Link.file("2020-08-15", false)));
-    expect(EXPRESSION.field.tryParse("[[%Man & Machine + Mind%]]")).toEqual(
-        Fields.literal(Link.file("%Man & Machine + Mind%", false))
-    );
+describe("Parse Link", () => {
+    test("simple", () =>
+        expect(EXPRESSION.field.tryParse("[[test/Main]]")).toEqual(Fields.literal(Link.file("test/Main", false))));
+    test("extension", () =>
+        expect(EXPRESSION.field.tryParse("[[test/Main.md]]")).toEqual(
+            Fields.literal(Link.file("test/Main.md", false))
+        ));
+    test("number", () =>
+        expect(EXPRESSION.field.tryParse("[[simple0]]")).toEqual(Fields.literal(Link.file("simple0", false))));
+    test("date", () =>
+        expect(EXPRESSION.field.tryParse("[[2020-08-15]]")).toEqual(Fields.literal(Link.file("2020-08-15", false))));
+    test("glyphs", () =>
+        expect(EXPRESSION.field.tryParse("[[%Man & Machine + Mind%]]")).toEqual(
+            Fields.literal(Link.file("%Man & Machine + Mind%", false))
+        ));
+
+    test("escaped pipe", () =>
+        expect(EXPRESSION.link.tryParse("[[Hello \\| There]]")).toEqual(Link.file("Hello | There")));
+    test("escaped pipe with display", () =>
+        expect(EXPRESSION.link.tryParse("[[\\||Yes]]")).toEqual(Link.file("|", false, "Yes")));
 });
 
 test("Parse link with display", () => {
@@ -303,6 +315,10 @@ test("Parse link with header and display", () => {
     expect(EXPRESSION.field.tryParse("[[%Man + Machine%#^no|0h no]]")).toEqual(
         Fields.literal(Link.block("%Man + Machine%", "no", false, "0h no"))
     );
+});
+
+test("Parse embedded link", () => {
+    expect(EXPRESSION.field.tryParse("![[hello]]")).toEqual(Fields.literal(Link.file("hello", true)));
 });
 
 // <-- Null ->
@@ -458,6 +474,15 @@ describe("Binary Operators", () => {
         );
         expect(EXPRESSION.field.tryParse("31 / 9.0")).toEqual(
             Fields.binaryOp(Fields.literal(31), "/", Fields.literal(9.0))
+        );
+    });
+
+    test("Simple Modulo", () => {
+        expect(EXPRESSION.field.tryParse("14 % 2")).toEqual(
+            Fields.binaryOp(Fields.literal(14), "%", Fields.literal(2))
+        );
+        expect(EXPRESSION.field.tryParse("31 % 9.0")).toEqual(
+            Fields.binaryOp(Fields.literal(31), "%", Fields.literal(9.0))
         );
     });
 

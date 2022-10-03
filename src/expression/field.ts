@@ -1,10 +1,10 @@
 /** Defines the AST for a field which can be evaluated. */
-import { LiteralValue } from "data/value";
+import { Literal } from "data-model/value";
 
 /** Comparison operators which yield true/false. */
 export type CompareOp = ">" | ">=" | "<=" | "<" | "=" | "!=";
 /** Arithmetic operators which yield numbers and other values. */
-export type ArithmeticOp = "+" | "-" | "*" | "/" | "&" | "|";
+export type ArithmeticOp = "+" | "-" | "*" | "/" | "%" | "&" | "|";
 /** All valid binary operators. */
 export type BinaryOp = CompareOp | ArithmeticOp;
 /** A (potentially computed) field to select or compare against. */
@@ -22,7 +22,7 @@ export type Field =
 /** Literal representation of some field type. */
 export interface LiteralField {
     type: "literal";
-    value: LiteralValue;
+    value: Literal;
 }
 
 /** A variable field for a variable with a given name. */
@@ -90,7 +90,7 @@ export namespace Fields {
         return { type: "variable", name };
     }
 
-    export function literal(value: LiteralValue): LiteralField {
+    export function literal(value: Literal): LiteralField {
         return { type: "literal", value };
     }
 

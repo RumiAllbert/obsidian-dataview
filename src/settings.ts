@@ -5,14 +5,14 @@
 export interface QuerySettings {
     /** What to render 'null' as in tables. Defaults to '-'. */
     renderNullAs: string;
-    /** Where to render task links - the start of the task or the end. **/
-    taskLinkLocation: "start" | "end" | "none";
-    /** How to render task links. If empty, will not render task links. */
-    taskLinkText: string;
     /** If enabled, tasks in Dataview views will automatically have their completion date appended when they are checked. */
     taskCompletionTracking: boolean;
-    /** The name of the inline field to be added as a task's completion when checked */
+    /** If enabled, automatic completions will use emoji shorthand ✅ YYYY-MM-DD instead of [completion:: date]. */
+    taskCompletionUseEmojiShorthand: boolean;
+    /** The name of the inline field to be added as a task's completion when checked. Only used if completionTracking is enabled and emojiShorthand is not. */
     taskCompletionText: string;
+    /** Date format of the task's completion timestamp. Only used if completionTracking is enabled and emojiShorthand is not. */
+    taskCompletionDateFormat: string;
     /** If true, render a modal which shows no results were returned. */
     warnOnEmptyResult: boolean;
     /** Whether or not automatic view refreshing is enabled. */
@@ -34,52 +34,63 @@ export interface QuerySettings {
 
 export const DEFAULT_QUERY_SETTINGS: QuerySettings = {
     renderNullAs: "\\-",
-    taskLinkLocation: "end",
-    taskLinkText: "🔗",
     taskCompletionTracking: false,
+    taskCompletionUseEmojiShorthand: false,
     taskCompletionText: "completion",
+    taskCompletionDateFormat: "yyyy-MM-dd",
     warnOnEmptyResult: true,
     refreshEnabled: true,
-    refreshInterval: 250,
+    refreshInterval: 2500,
     defaultDateFormat: "MMMM dd, yyyy",
     defaultDateTimeFormat: "h:mm a - MMMM dd, yyyy",
-    maxRecursiveRenderDepth: 6,
+    maxRecursiveRenderDepth: 4,
 
     tableIdColumnName: "File",
     tableGroupColumnName: "Group",
+};
+
+/////////////////////
+// Export Settings //
+/////////////////////
+
+export interface ExportSettings {
+    /** Whether or not HTML should be used for formatting in exports. */
+    allowHtml: boolean;
+}
+
+export const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
+    allowHtml: true,
 };
 
 ///////////////////////////////
 // General Dataview Settings //
 ///////////////////////////////
 
-export interface DataviewSettings extends QuerySettings {
+export interface DataviewSettings extends QuerySettings, ExportSettings {
     /** The prefix for inline queries by default. */
     inlineQueryPrefix: string;
     /** The prefix for inline JS queries by default. */
     inlineJsQueryPrefix: string;
+    /** If true, inline queries are also evaluated in full codeblocks. */
+    inlineQueriesInCodeblocks: boolean;
     /** Enable or disable executing DataviewJS queries. */
     enableDataviewJs: boolean;
     /** Enable or disable executing inline DataviewJS queries. */
     enableInlineDataviewJs: boolean;
     /** Enable or disable rendering inline fields prettily. */
     prettyRenderInlineFields: boolean;
-
-    // Internal properties //
-
-    /** A monotonically increasing version which tracks what schema we are on, used for migrations. */
-    schemaVersion: number;
 }
 
 /** Default settings for dataview on install. */
 export const DEFAULT_SETTINGS: DataviewSettings = {
     ...DEFAULT_QUERY_SETTINGS,
+    ...DEFAULT_EXPORT_SETTINGS,
     ...{
         inlineQueryPrefix: "=",
         inlineJsQueryPrefix: "$=",
+        inlineQueriesInCodeblocks: true,
         enableDataviewJs: false,
         enableInlineDataviewJs: false,
         prettyRenderInlineFields: true,
-        schemaVersion: 1,
     },
 };

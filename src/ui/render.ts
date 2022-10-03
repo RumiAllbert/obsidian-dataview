@@ -3,20 +3,7 @@ import { DataArray } from "api/data-array";
 import { QuerySettings } from "settings";
 import { currentLocale } from "util/locale";
 import { renderMinimalDate, renderMinimalDuration } from "util/normalize";
-import { LiteralValue, Values } from "data/value";
-
-/** Make an Obsidian-friendly internal link. */
-export function createAnchor(text: string, target: string, internal: boolean): HTMLAnchorElement {
-    let a = document.createElement("a");
-    a.dataset.href = target;
-    a.href = target;
-    a.text = text;
-    a.target = "_blank";
-    a.rel = "noopener";
-    if (internal) a.addClass("internal-link");
-
-    return a;
-}
+import { Literal, Values, Widgets } from "data-model/value";
 
 /** Render simple fields compactly, removing wrapping content like paragraph and span. */
 export async function renderCompactMarkdown(
@@ -28,54 +15,12 @@ export async function renderCompactMarkdown(
     let subcontainer = container.createSpan();
     await MarkdownRenderer.renderMarkdown(markdown, subcontainer, sourcePath, component);
 
-    let paragraph = subcontainer.querySelector("p");
+    let paragraph = subcontainer.querySelector(":scope > p");
     if (subcontainer.children.length == 1 && paragraph) {
         while (paragraph.firstChild) {
             subcontainer.appendChild(paragraph.firstChild);
         }
         subcontainer.removeChild(paragraph);
-    }
-}
-
-/** Create a list inside the given container, with the given data. */
-export async function renderList(
-    container: HTMLElement,
-    elements: LiteralValue[],
-    component: Component,
-    originFile: string,
-    settings: QuerySettings
-) {
-    let listEl = container.createEl("ul", { cls: ["dataview", "list-view-ul"] });
-    for (let elem of elements) {
-        let li = listEl.createEl("li");
-        await renderValue(elem, li, originFile, component, settings, true, "list");
-    }
-}
-
-/** Create a table inside the given container, with the given data. */
-export async function renderTable(
-    container: HTMLElement,
-    headers: string[],
-    values: LiteralValue[][],
-    component: Component,
-    originFile: string,
-    settings: QuerySettings
-) {
-    let tableEl = container.createEl("table", { cls: ["dataview", "table-view-table"] });
-
-    let theadEl = tableEl.createEl("thead", { cls: "table-view-thead" });
-    let headerEl = theadEl.createEl("tr", { cls: "table-view-tr-header" });
-    for (let header of headers) {
-        headerEl.createEl("th", { text: header, cls: "table-view-th" });
-    }
-
-    let tbodyEl = tableEl.createEl("tbody", { cls: "table-view-tbody" });
-    for (let row of values) {
-        let rowEl = tbodyEl.createEl("tr");
-        for (let value of row) {
-            let td = rowEl.createEl("td");
-            await renderValue(value, td, originFile, component, settings, true);
-        }
     }
 }
 
@@ -94,18 +39,11 @@ export function renderCodeBlock(container: HTMLElement, source: string, language
     return code;
 }
 
-/** Render a span block with an error in it; returns the element to allow for dynamic updating. */
-export function renderErrorSpan(container: HTMLElement, error: string): HTMLElement {
-    let pre = container.createEl("span", { cls: ["dataview", "dataview-error"] });
-    pre.appendText(error);
-    return pre;
-}
-
 export type ValueRenderContext = "root" | "list";
 
 /** Prettily render a value into a container with the given settings. */
 export async function renderValue(
-    field: LiteralValue,
+    field: Literal,
     container: HTMLElement,
     originFile: string,
     component: Component,
@@ -132,6 +70,22 @@ export async function renderValue(
         await renderCompactMarkdown(field.markdown(), container, originFile, component);
     } else if (Values.isHtml(field)) {
         container.appendChild(field);
+    } else if (Values.isWidget(field)) {
+        if (Widgets.isListPair(field)) {
+            await renderValue(field.key, container, originFile, component, settings, expandList, context, depth);
+            container.appendText(": ");
+            await renderValue(field.value, container, originFile, component, settings, expandList, context, depth);
+        } else if (Widgets.isExternalLink(field)) {
+            let elem = document.createElement("a");
+            elem.textContent = field.display ?? field.url;
+            elem.rel = "noopener";
+            elem.target = "_blank";
+            elem.classList.add("external-link");
+            elem.href = field.url;
+            container.appendChild(elem);
+        } else {
+            container.appendText(`<unknown widget '${field.$widget}>`);
+        }
     } else if (Values.isFunction(field)) {
         container.appendText("<function>");
     } else if (Values.isArray(field) || DataArray.isDataArray(field)) {
@@ -164,7 +118,7 @@ export async function renderValue(
         }
     } else if (Values.isObject(field)) {
         // Don't render classes in case they have recursive references; spoopy.
-        if (!Values.isTask(field) && field?.constructor?.name && field?.constructor?.name != "Object") {
+        if (field?.constructor?.name && field?.constructor?.name != "Object") {
             container.appendText(`<${field.constructor.name}>`);
             return;
         }

@@ -1,4 +1,4 @@
-import { FullIndex } from "data";
+import { FullIndex } from "data-index";
 import { Field } from "expression/field";
 import { App } from "obsidian";
 import { executeInline } from "query/engine";
@@ -22,7 +22,7 @@ export class DataviewInlineRenderer extends DataviewRefreshableRenderer {
         public settings: DataviewSettings,
         public app: App
     ) {
-        super(container);
+        super(container, index, app, settings);
     }
 
     async render() {
@@ -33,6 +33,7 @@ export class DataviewInlineRenderer extends DataviewRefreshableRenderer {
             renderErrorPre(this.errorbox, "Dataview (for inline query '" + this.fieldText + "'): " + result.error);
         } else {
             let temp = document.createElement("span");
+            temp.addClasses(["dataview", "dataview-inline-query"]);
             await renderValue(result.value, temp, this.origin, this, this.settings, false);
 
             this.target.replaceWith(temp);

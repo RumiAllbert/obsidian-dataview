@@ -7,7 +7,7 @@ import typescript2 from "rollup-plugin-typescript2";
 
 const BASE_CONFIG = {
     input: "src/main.ts",
-    external: ["obsidian"],
+    external: ["obsidian", "@codemirror/view", "@codemirror/state", "@codemirror/language"],
     onwarn: (warning, warn) => {
         // Sorry rollup, but we're using eval...
         if (/Use of eval is strongly discouraged/.test(warning.message)) return;
@@ -29,6 +29,7 @@ const DEV_PLUGIN_CONFIG = {
         sourcemap: "inline",
         format: "cjs",
         exports: "default",
+        name: "Dataview (Development)",
     },
     plugins: getRollupPlugins(
         undefined,
@@ -49,6 +50,7 @@ const PROD_PLUGIN_CONFIG = {
         sourcemapExcludeSources: true,
         format: "cjs",
         exports: "default",
+        name: "Dataview (Production)",
     },
     plugins: getRollupPlugins(),
 };
@@ -60,10 +62,11 @@ const LIBRARY_CONFIG = {
         dir: "lib",
         sourcemap: true,
         format: "cjs",
+        name: "Dataview (Library)",
     },
     plugins: getRollupPlugins(
         { tsconfig: "tsconfig-lib.json", typescript: ttypescript },
-        copy({ targets: [{ src: "src/types/*.d.ts", dest: "lib/types" }] })
+        copy({ targets: [{ src: "src/typings/*.d.ts", dest: "lib/typings" }] })
     ),
 };
 

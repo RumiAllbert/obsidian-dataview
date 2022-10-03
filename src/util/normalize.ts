@@ -6,11 +6,15 @@ import { QuerySettings } from "settings";
 
 /** Normalize a duration to all of the proper units. */
 export function normalizeDuration(dur: Duration) {
+    if (dur === undefined || dur === null) return dur;
+
     return dur.shiftTo("years", "months", "weeks", "days", "hours", "minutes", "seconds", "milliseconds").normalize();
 }
 
 /** Strip the time components of a date time object. */
 export function stripTime(dt: DateTime): DateTime {
+    if (dt === null || dt === undefined) return dt;
+
     return DateTime.fromObject({
         year: dt.year,
         month: dt.month,
@@ -53,6 +57,17 @@ export function getFileTitle(path: string): string {
 export function getExtension(path: string): string {
     if (!path.includes(".")) return "";
     return path.substring(path.lastIndexOf(".") + 1);
+}
+
+/** Parse all subtags out of the given tag. I.e., #hello/i/am would yield [#hello/i/am, #hello/i, #hello]. */
+export function extractSubtags(tag: string): string[] {
+    let result = [tag];
+    while (tag.includes("/")) {
+        tag = tag.substring(0, tag.lastIndexOf("/"));
+        result.push(tag);
+    }
+
+    return result;
 }
 
 /** Try calling the given function; on failure, return the error message.  */
@@ -119,10 +134,10 @@ export function normalizeHeaderForLink(header: string): string {
 export function renderMinimalDate(time: DateTime, settings: QuerySettings, locale: string): string {
     // If there is no relevant time specified, fall back to just rendering the date.
     if (time.second == 0 && time.minute == 0 && time.hour == 0) {
-        return time.toFormat(settings.defaultDateFormat, { locale });
+        return time.toLocal().toFormat(settings.defaultDateFormat, { locale });
     }
 
-    return time.toFormat(settings.defaultDateTimeFormat, { locale });
+    return time.toLocal().toFormat(settings.defaultDateTimeFormat, { locale });
 }
 
 /** Render a duration in a minimal format to save space. */
@@ -142,4 +157,12 @@ export function renderMinimalDuration(dur: Duration): string {
 
     if (result.endsWith(", ")) result = result.substring(0, result.length - 2);
     return result;
+}
+
+/** Determine if two sets are equal in contents. */
+export function setsEqual<T>(first: Set<T>, second: Set<T>): boolean {
+    if (first.size != second.size) return false;
+    for (let elem of first) if (!second.has(elem)) return false;
+
+    return true;
 }
