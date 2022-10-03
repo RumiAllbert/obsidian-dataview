@@ -45,7 +45,7 @@ function findDate(file: string, fields: Map<string, LiteralValue>): DateTime | u
 
 /** Recursively convert frontmatter into fields. We have to dance around YAML structure. */
 export function parseFrontmatter(value: any): LiteralValue {
-    if (value == null) {
+    if (value === null) {
         return null;
     } else if (typeof value === "object") {
         if (Array.isArray(value)) {
