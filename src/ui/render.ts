@@ -110,9 +110,9 @@ export async function renderValue(
     originFile: string,
     component: Component,
     settings: QuerySettings,
-    expandList: boolean = false,
+    expandList = false,
     context: ValueRenderContext = "root",
-    depth: number = 0
+    depth = 0
 ) {
     // Prevent infinite recursion.
     if (depth > settings.maxRecursiveRenderDepth) {

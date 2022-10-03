@@ -61,7 +61,7 @@ export class Task {
         return newTask;
     }
 
-    public toObject(inlineAnnotations: boolean = true): Record<string, LiteralValue> {
+    public toObject(inlineAnnotations = true): Record<string, LiteralValue> {
         let result: Record<string, LiteralValue> = {
             text: this.text,
             line: this.line,
@@ -111,7 +111,7 @@ export class Link {
     public type: "file" | "header" | "block";
 
     /** Create a link to a specific file. */
-    public static file(path: string, embed: boolean = false, display?: string) {
+    public static file(path: string, embed = false, display?: string) {
         return new Link({
             path,
             embed,
@@ -302,7 +302,7 @@ export namespace Values {
     export function toString(
         field: any,
         setting: QuerySettings = DEFAULT_QUERY_SETTINGS,
-        recursive: boolean = false
+        recursive = false
     ): string {
         let wrapped = wrapValue(field);
         if (!wrapped) return "null";

@@ -149,7 +149,7 @@ export class DataviewApi implements DvAPIInterface {
     }
 
     /** Create a dataview file link to the given path. */
-    public fileLink(path: string, embed: boolean = false, display?: string) {
+    public fileLink(path: string, embed = false, display?: string) {
         return Link.file(path, embed, display);
     }
 
@@ -210,10 +210,10 @@ export class DataviewApi implements DvAPIInterface {
     /** Render a dataview task view with the given tasks. */
     public async taskList(
         tasks: Task[] | DataArray<any>,
-        groupByFile: boolean = true,
+        groupByFile = true,
         container: HTMLElement,
         component: Component,
-        filePath: string = ""
+        filePath = ""
     ) {
         if (DataArray.isDataArray(tasks)) tasks = tasks.array();
 
@@ -254,7 +254,7 @@ export class DataviewApi implements DvAPIInterface {
         container: HTMLElement,
         component: Component,
         filePath: string,
-        inline: boolean = false
+        inline = false
     ) {
         await renderValue(value as LiteralValue, container, filePath, component, this.settings, inline);
     }

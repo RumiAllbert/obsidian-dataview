@@ -144,17 +144,17 @@ export class DataviewInlineApi {
     }
 
     /** Create a dataview file link to the given path. */
-    public fileLink(path: string, embed: boolean = false, display?: string): Link {
+    public fileLink(path: string, embed = false, display?: string): Link {
         return Link.file(path, embed, display);
     }
 
     /** Create a dataview section link to the given path. */
-    public sectionLink(path: string, section: string, embed: boolean = false, display?: string): Link {
+    public sectionLink(path: string, section: string, embed = false, display?: string): Link {
         return Link.header(path, section, embed, display);
     }
 
     /** Create a dataview block link to the given path. */
-    public blockLink(path: string, blockId: string, embed: boolean = false, display?: string): Link {
+    public blockLink(path: string, blockId: string, embed = false, display?: string): Link {
         return Link.block(path, blockId, embed, display);
     }
 
@@ -294,7 +294,7 @@ export class DataviewInlineApi {
     }
 
     /** Render a dataview task view with the given tasks. */
-    public taskList(tasks: Task[] | DataArray<Task>, groupByFile: boolean = true) {
+    public taskList(tasks: Task[] | DataArray<Task>, groupByFile = true) {
         return this.api.taskList(tasks, groupByFile, this.container, this.component, this.currentFilePath);
     }
 }
