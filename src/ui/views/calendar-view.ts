@@ -91,7 +91,7 @@ export class DataviewCalendarRenderer extends DataviewRefreshableRenderer {
                         return;
                     }
                     const file = renderer.app.metadataCache.getFirstLinkpathDest(vals[0].link.path, "");
-                    if (file == null) {
+                    if (file === null) {
                         return;
                     }
                     const mode = (this.app.vault as any).getConfig("defaultViewMode");

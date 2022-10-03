@@ -252,7 +252,7 @@ export class PrefixIndex extends Component {
 
     /** Determines if the given path exists in the prefix index. */
     public pathExists(path: string): boolean {
-        return this.vault.getAbstractFileByPath(path || "/") != null;
+        return this.vault.getAbstractFileByPath(path || "/") !== null;
     }
 
     /** Determines if the given prefix exists in the prefix index. */
