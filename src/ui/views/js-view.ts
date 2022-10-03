@@ -6,7 +6,7 @@ import { renderErrorPre, renderValue } from "ui/render";
 import { DataviewRefreshableRenderer } from "ui/refreshable-view";
 
 export class DataviewJSRenderer extends DataviewRefreshableRenderer {
-    static PREAMBLE: string = "const dataview = this;const dv = this;";
+    static PREAMBLE = "const dataview = this;const dv = this;";
 
     constructor(
         public script: string,
@@ -46,7 +46,7 @@ export class DataviewJSRenderer extends DataviewRefreshableRenderer {
 
 /** Inline JS renderer accessible using '=$' by default. */
 export class DataviewInlineJSRenderer extends DataviewRefreshableRenderer {
-    static PREAMBLE: string = "const dataview = this;const dv=this;";
+    static PREAMBLE = "const dataview = this;const dv=this;";
 
     // The box that the error is rendered in, if relevant.
     errorbox?: HTMLElement;

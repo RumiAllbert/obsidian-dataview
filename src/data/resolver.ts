@@ -12,7 +12,7 @@ export type Datarow<T> = { id: LiteralValue; data: T };
 export function matchingSourcePaths(
     source: Source,
     index: FullIndex,
-    originFile: string = ""
+    originFile = ""
 ): Result<Set<string>, string> {
     switch (source.type) {
         case "empty":
@@ -125,7 +125,7 @@ export function resolveMarkdownData(path: string, index: FullIndex): Result<Data
 export async function resolveSource(
     source: Source,
     index: FullIndex,
-    originFile: string = ""
+    originFile = ""
 ): Promise<Result<Datarow<DataObject>[], string>> {
     let paths = matchingSourcePaths(source, index, originFile);
     if (!paths.successful) return Result.failure(paths.error);

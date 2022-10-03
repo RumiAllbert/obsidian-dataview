@@ -151,7 +151,7 @@ export function markdownFile(contents: string): MarkdownBlock[] {
 export function markdownBlocks(
     tokenizer: LineTokenizer,
     requiredIndent: number,
-    checkFrontmatter: boolean = false
+    checkFrontmatter = false
 ): MarkdownBlock[] {
     let blocks: MarkdownBlock[] = [];
 
